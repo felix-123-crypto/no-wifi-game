@@ -63,7 +63,7 @@
   };
 
   const defaults = {
-    version:1,coins:4200,gems:180,energy:12,maxEnergy:15,tokens:18,xp:540,rankPoints:320,
+    version:1,coins:4200,energy:12,maxEnergy:15,tokens:18,xp:540,rankPoints:320,
     wins:0,draws:0,losses:0,skillBest:0,cupWins:0,cups:0,formation:'4-3-3',squad:{},
     owned:Object.fromEntries(initialIds.map(id => [id,{level:1,shards:0}])),
     lastDaily:'',lastEnergyAt:Date.now(),sound:true,vibration:true,totalPacks:0,totalGoals:0
@@ -179,7 +179,7 @@
   function vibrate(pattern=20){ if(state.vibration && navigator.vibrate) navigator.vibrate(pattern); }
 
   function renderWallet(){
-    $('#coins-value').textContent=nf.format(state.coins);$('#gems-value').textContent=nf.format(state.gems);$('#energy-value').textContent=state.energy;
+    $('#coins-value').textContent=nf.format(state.coins);$('#energy-value').textContent=state.energy;
     $('#club-level').textContent=clubLevel();
   }
   function renderHome(){
@@ -289,7 +289,7 @@
     saveState();renderAll();openUpgrade(id);tone(760,.16,'triangle');vibrate([25,30,25]);showToast(`${playerMap.get(id).name} reached level ${level+1}!`);
   }
 
-  const packTypes={academy:{count:1,min:60,currency:'coins',cost:600,label:'ACADEMY PACK'},pro:{count:2,min:70,currency:'gems',cost:120,label:'PRO PACK'},elite:{count:3,min:78,currency:'coins',cost:2400,label:'ELITE PACK'},daily:{count:1,min:60,currency:null,cost:0,label:'DAILY CLUB DROP'}};
+  const packTypes={academy:{count:1,min:60,currency:'coins',cost:600,label:'ACADEMY PACK'},pro:{count:2,min:70,currency:'coins',cost:1400,label:'PRO PACK'},elite:{count:3,min:78,currency:'coins',cost:2400,label:'ELITE PACK'},daily:{count:1,min:60,currency:null,cost:0,label:'DAILY CLUB DROP'}};
   function weightedPlayer(minRating,index,pack){
     let pool=players.filter(player=>player.rating>=minRating);
     if(pack==='elite'&&index>0) pool=players.filter(player=>player.rating>=70);
@@ -442,7 +442,7 @@
       else{state.draws++;coinReward=160;rpChange=game.mode==='ranked'?8:0;title='DRAW';icon='⚖';}
       state.coins+=coinReward;state.rankPoints=Math.max(0,state.rankPoints+rpChange);state.xp+=result==='win'?60:30;
       if(game.mode==='tournament'){
-        if(result==='win'){state.cupWins++;if(state.cupWins>=3){state.cups++;state.cupWins=0;state.gems+=90;coinReward+=900;state.coins+=900;title='ZERO CUP WON!';copy='Three wins complete! Trophy secured, plus 900 coins and 90 gems.';icon='♛';}}
+        if(result==='win'){state.cupWins++;if(state.cupWins>=3){state.cups++;state.cupWins=0;coinReward+=900;state.coins+=900;title='ZERO CUP WON!';copy='Three wins complete! Trophy secured, plus 900 bonus coins.';icon='♛';}}
         else state.cupWins=0;
       }
       copy ||= `${game.homeScore}–${game.awayScore}. You earned ${nf.format(coinReward)} coins${rpChange?` and ${rpChange>0?'+':''}${rpChange} RP`:''}.`;

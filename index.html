@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Six full browser games—3D building, football, maze action, 2048, Tetris, and Snake—with offline support after your first visit.">
+  <meta name="theme-color" content="#14213d">
+  <meta property="og:title" content="Recess Arcade — Six games, zero logins">
+  <meta property="og:description" content="Play a 3D voxel sandbox, football dynasty mode, and four arcade classics. Works offline after your first visit.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Recess Arcade">
+  <meta name="twitter:description" content="Six full browser games. Zero logins.">
+  <meta name="twitter:image" content="/og.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Recess Arcade — Play anywhere</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Recess Arcade home"><span>R</span> RECESS ARCADE</a>
+    <div class="top-actions"><div class="status" id="network-status"><i></i> ONLINE · OFFLINE READY</div><a class="account-button" id="account-button" href="/signin-with-chatgpt?return_to=/index.html">OPTIONAL SIGN IN</a></div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">SIX GAMES · ONE BROWSER · NO SIGN-IN</p>
+        <h1 id="hero-title">YOUR BREAK.<br><em>YOUR ARCADE.</em></h1>
+        <p class="lede">A full arcade built for smooth 60 FPS play. Visit once, then keep playing when the Wi-Fi gives up.</p>
+        <a class="cta" href="#catalog">PICK A GAME <span>↓</span></a>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div>
+        <div class="console"><div class="screen"><b>6 GAMES</b><strong>PLAY</strong></div><div class="dpad">+</div><div class="buttons">● ●</div></div>
+        <div class="spark s1">✦</div><div class="spark s2">✦</div>
+      </div>
+    </section>
+
+    <section class="catalog-section" id="catalog" aria-labelledby="catalog-title">
+      <div class="catalog-heading"><div><p class="eyebrow">CHOOSE YOUR ADVENTURE</p><h2 id="catalog-title">GAME SHELF</h2></div><p id="result-count">6 games ready</p></div>
+      <div class="catalog-layout">
+        <aside class="filters" aria-label="Filter games">
+          <div class="filter-title"><h3>FILTERS</h3><button id="clear-filters" type="button">Reset</button></div>
+          <fieldset><legend>GAME TYPE</legend>
+            <label><input type="checkbox" name="type" value="arcade"><span>Arcade</span><b>4</b></label>
+            <label><input type="checkbox" name="type" value="creative"><span>Creative</span><b>1</b></label>
+            <label><input type="checkbox" name="type" value="sports"><span>Sports</span><b>1</b></label>
+          </fieldset>
+          <fieldset><legend>MATURITY</legend>
+            <label><input type="checkbox" name="age" value="everyone"><span>Everyone</span><b>6</b></label>
+            <label><input type="checkbox" name="age" value="10plus"><span>10+</span><b>3</b></label>
+          </fieldset>
+          <fieldset><legend>MIN. RATING</legend>
+            <label><input type="radio" name="rating" value="0" checked><span>Show all</span></label>
+            <label><input type="radio" name="rating" value="4.5"><span>4.5 and up</span></label>
+            <label><input type="radio" name="rating" value="4.8"><span>4.8 and up</span></label>
+          </fieldset>
+        </aside>
+
+        <div class="games-grid" id="games-grid">
+          <a class="game-card block featured" href="voxel.html" data-type="creative" data-age="everyone 10plus" data-rating="4.9">
+            <div class="game-visual"><div class="pixel-hill"></div><div class="pickaxe">⛏</div><div class="rank">FULL 3D WORLD</div></div>
+            <div class="game-info"><div><p>CREATIVE · EVERYONE</p><h3>Block Quest 3D</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.9 <small>MINE · BUILD · EXPLORE</small></div></div>
+          </a>
+          <a class="game-card goal" href="football.html" data-type="sports" data-age="everyone" data-rating="4.9">
+            <div class="game-visual"><div class="field-lines"></div><div class="ball">⚽</div><div class="rank">ULTIMATE TEAM</div></div>
+            <div class="game-info"><div><p>SPORTS · EVERYONE</p><h3>Football Dynasty</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.9 <small>PACKS · RANKS · MATCHES</small></div></div>
+          </a>
+          <a class="game-card pac" href="game.html?game=pacman" data-type="arcade" data-age="everyone 10plus" data-rating="4.8">
+            <div class="game-visual"><span class="ghost">◖̈</span><span class="pacman"></span><i>• • • •</i><div class="rank">#1 PICK</div></div>
+            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Maze Muncher</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.8 <small>QUICK PLAY</small></div></div>
+          </a>
+          <a class="game-card number" href="classics.html?game=2048" data-type="arcade" data-age="everyone 10plus" data-rating="4.8">
+            <div class="game-visual"><div class="tile-stack"><i>2</i><i>0</i><i>4</i><i>8</i></div><div class="rank">NUMBER PUZZLE</div></div>
+            <div class="game-info"><div><p>PUZZLE · EVERYONE</p><h3>2048</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.8 <small>THINK AHEAD</small></div></div>
+          </a>
+          <a class="game-card tetris" href="classics.html?game=tetris" data-type="arcade" data-age="everyone" data-rating="4.7">
+            <div class="game-visual"><div class="tetrominoes"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="rank">LINE CLEAR</div></div>
+            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Block Drop</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.7 <small>LEVEL UP</small></div></div>
+          </a>
+          <a class="game-card snake" href="classics.html?game=snake" data-type="arcade" data-age="everyone" data-rating="4.7">
+            <div class="game-visual"><div class="snake-art">● ● ● ● ◉</div><div class="fruit">◆</div><div class="rank">HIGH-SPEED</div></div>
+            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Neon Snake</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.7 <small>CHASE THE SCORE</small></div></div>
+          </a>
+          <div class="empty" hidden><span>¯\_(ツ)_/¯</span><h3>No games match</h3><p>Try removing a filter.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><a class="brand" href="#top"><span>R</span> RECESS ARCADE</a><p>First visit online. Every visit after that can work offline.</p><p>6 GAMES · 0 LOGINS · 100% JAVASCRIPT</p></footer>
+  <script src="profile.js"></script><script src="app.js"></script>
+</body>
+</html>

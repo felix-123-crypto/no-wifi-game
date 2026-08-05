@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Explore, mine, and build in a large offline 3D voxel world.">
+  <meta name="theme-color" content="#14213d">
+  <title>Voxel Frontier - Recess Arcade</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body.voxel-body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: #14213d;
+    }
+
+    .voxel-body .topbar {
+      height: 64px;
+      background: rgba(255, 250, 240, .97);
+      box-shadow: 0 4px 0 rgba(20, 33, 61, .22);
+    }
+
+    .voxel-body .status {
+      display: flex;
+      align-items: center;
+    }
+
+    .voxel-stage {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 64px);
+      height: calc(100dvh - 64px);
+      overflow: hidden;
+      background: #74b9dc;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #voxel-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #74b9dc;
+      cursor: crosshair;
+      touch-action: none;
+      image-rendering: pixelated;
+    }
+
+    .world-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at center, transparent 52%, rgba(10, 22, 38, .20) 100%);
+    }
+
+    .hud {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      color: #fff;
+      text-shadow: 2px 2px 0 rgba(20, 33, 61, .9);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hud-panel {
+      position: absolute;
+      top: 16px;
+      padding: 10px 13px;
+      border: 2px solid rgba(255, 255, 255, .84);
+      background: rgba(20, 33, 61, .72);
+      backdrop-filter: blur(4px);
+      box-shadow: 4px 4px 0 rgba(20, 33, 61, .45);
+    }
+
+    .world-stats { left: 16px; }
+    .performance-stats { right: 16px; text-align: right; }
+
+    .hud-label {
+      display: block;
+      margin-bottom: 3px;
+      color: #ffd23f;
+      font-size: 9px;
+      letter-spacing: 2px;
+    }
+
+    .hud-value { font-size: 14px; letter-spacing: .5px; }
+
+    .quest-card {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      min-width: 260px;
+      padding: 10px 16px;
+      transform: translateX(-50%);
+      border: 2px solid var(--ink);
+      background: var(--yellow);
+      color: var(--ink);
+      text-align: center;
+      text-shadow: none;
+      box-shadow: 4px 4px 0 rgba(20, 33, 61, .52);
+    }
+
+    .quest-card small {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 9px;
+      letter-spacing: 2px;
+    }
+
+    .quest-card strong { font-size: 13px; }
+
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 24px;
+      height: 24px;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(1px 1px 0 #14213d);
+    }
+
+    .crosshair::before,
+    .crosshair::after {
+      content: "";
+      position: absolute;
+      background: white;
+      border: 1px solid rgba(20, 33, 61, .85);
+    }
+
+    .crosshair::before { left: 10px; top: 1px; width: 3px; height: 22px; }
+    .crosshair::after { left: 1px; top: 10px; width: 22px; height: 3px; }
+
+    .target-label {
+      position: absolute;
+      top: calc(50% + 22px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      letter-spacing: 1px;
+      opacity: .92;
+    }
+
+    .score-pill {
+      position: absolute;
+      right: 16px;
+      bottom: 18px;
+      padding: 9px 12px;
+      border: 2px solid white;
+      background: rgba(20, 33, 61, .72);
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .desktop-hint {
+      position: absolute;
+      left: 16px;
+      bottom: 18px;
+      padding: 9px 11px;
+      border: 2px solid rgba(255, 255, 255, .7);
+      background: rgba(20, 33, 61, .64);
+      font-size: 10px;
+      letter-spacing: .7px;
+    }
+
+    .hotbar {
+      position: absolute;
+      left: 50%;
+      bottom: 17px;
+      z-index: 6;
+      display: flex;
+      gap: 4px;
+      transform: translateX(-50%);
+      pointer-events: auto;
+    }
+
+    .hotbar button {
+      position: relative;
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      padding: 0;
+      border: 3px solid rgba(255, 255, 255, .82);
+      border-radius: 0;
+      background: rgba(20, 33, 61, .82);
+      color: white;
+      box-shadow: 3px 3px 0 rgba(20, 33, 61, .5);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .hotbar button[aria-pressed="true"] {
+      transform: translateY(-7px);
+      border-color: var(--yellow);
+      background: rgba(255, 210, 63, .23);
+      box-shadow: 0 0 0 2px var(--ink), 4px 5px 0 rgba(20, 33, 61, .55);
+    }
+
+    .hotbar kbd {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      padding: 0;
+      background: none;
+      color: rgba(255, 255, 255, .78);
+      font: 700 9px Arial, sans-serif;
+    }
+
+    .block-swatch {
+      width: 27px;
+      height: 27px;
+      border: 2px solid rgba(20, 33, 61, .74);
+      box-shadow: inset -5px -5px 0 rgba(20, 33, 61, .2), inset 3px 3px 0 rgba(255, 255, 255, .25);
+    }
+
+    .block-grass { background: linear-gradient(#56b74f 0 29%, #8b5638 29%); }
+    .block-dirt { background: #895439; }
+    .block-stone { background: #7d8790; }
+    .block-wood { background: repeating-linear-gradient(90deg, #8b5a34 0 5px, #6f4227 5px 8px); }
+    .block-sand { background: #e5cf82; }
+    .block-brick { background: repeating-linear-gradient(0deg, #b65342 0 7px, #ead6b0 7px 9px); }
+    .block-glass { background: rgba(134, 224, 236, .86); }
+    .block-crystal { background: #58e6f4; box-shadow: inset -5px -5px #178db3, inset 3px 3px #ddffff, 0 0 8px #58e6f4; }
+
+    .held-block {
+      position: absolute;
+      right: 8%;
+      bottom: -55px;
+      z-index: 2;
+      width: 128px;
+      height: 128px;
+      transform: rotate(-18deg) skewY(7deg);
+      border: 5px solid rgba(20, 33, 61, .7);
+      background: #895439;
+      opacity: .92;
+      pointer-events: none;
+      box-shadow: inset -24px -20px 0 rgba(20, 33, 61, .22), inset 12px 10px 0 rgba(255, 255, 255, .14), 8px 8px 0 rgba(20, 33, 61, .24);
+      transform-origin: bottom right;
+      transition: background-color .12s;
+    }
+
+    .held-block.swing { animation: block-swing .18s ease-out; }
+    @keyframes block-swing {
+      45% { transform: translate(-40px, -65px) rotate(-38deg) skewY(7deg); }
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: 92px;
+      z-index: 7;
+      max-width: min(430px, 80vw);
+      padding: 11px 16px;
+      transform: translate(-50%, 18px);
+      border: 3px solid var(--ink);
+      background: white;
+      color: var(--ink);
+      text-align: center;
+      text-shadow: none;
+      box-shadow: 5px 5px 0 var(--ink);
+      opacity: 0;
+      transition: opacity .18s, transform .18s;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .world-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 12;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: linear-gradient(rgba(20, 33, 61, .76), rgba(20, 33, 61, .9));
+      color: white;
+    }
+
+    .world-overlay[hidden] { display: none; }
+
+    .start-card {
+      width: min(560px, 94vw);
+      padding: clamp(25px, 5vw, 46px);
+      border: 4px solid var(--ink);
+      background: var(--paper);
+      color: var(--ink);
+      text-align: center;
+      box-shadow: 12px 12px 0 var(--red);
+    }
+
+    .start-card .eyebrow { color: #536078; }
+
+    .start-card h1 {
+      margin: 0;
+      font-size: clamp(42px, 8vw, 76px);
+      line-height: .88;
+      letter-spacing: -4px;
+    }
+
+    .start-card h1 span { color: var(--red); }
+
+    .start-card p:not(.eyebrow) {
+      margin: 20px auto;
+      font-family: Georgia, serif;
+      font-weight: 400;
+      line-height: 1.55;
+    }
+
+    .start-card button {
+      padding: 15px 24px;
+      border: var(--line);
+      background: var(--yellow);
+      color: var(--ink);
+      box-shadow: 6px 6px 0 var(--ink);
+      cursor: pointer;
+    }
+
+    .start-card button:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 var(--ink); }
+
+    .start-card button:disabled { cursor: wait; filter: grayscale(1); opacity: .7; }
+
+    .control-line {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 17px;
+      color: #556079;
+      font-size: 10px;
+      letter-spacing: .7px;
+    }
+
+    .touch-ui { display: none; }
+
+    @media (pointer: coarse), (any-pointer: coarse), (max-width: 800px) {
+      .desktop-hint { display: none; }
+      .performance-stats { top: 10px; right: 10px; }
+      .world-stats { top: 10px; left: 10px; }
+      .quest-card { top: 72px; min-width: 230px; padding: 7px 10px; }
+      .held-block { display: none; }
+      .score-pill { top: 68px; right: 10px; bottom: auto; }
+      .hotbar { bottom: max(11px, env(safe-area-inset-bottom)); gap: 2px; max-width: 95vw; overflow-x: auto; scrollbar-width: none; }
+      .hotbar::-webkit-scrollbar { display: none; }
+      .hotbar button { width: 43px; min-width: 43px; height: 43px; border-width: 2px; }
+      .block-swatch { width: 23px; height: 23px; }
+      .target-label { display: none; }
+      .toast { bottom: 67px; }
+
+      .touch-ui {
+        position: absolute;
+        inset: 0;
+        z-index: 8;
+        display: block;
+        pointer-events: none;
+      }
+
+      .joystick {
+        position: absolute;
+        left: max(22px, env(safe-area-inset-left));
+        bottom: max(76px, calc(env(safe-area-inset-bottom) + 65px));
+        width: 116px;
+        height: 116px;
+        border: 3px solid rgba(255, 255, 255, .78);
+        border-radius: 50%;
+        background: rgba(20, 33, 61, .36);
+        box-shadow: 0 0 0 3px rgba(20, 33, 61, .28);
+        pointer-events: auto;
+        touch-action: none;
+      }
+
+      .joystick-knob {
+        position: absolute;
+        left: 31px;
+        top: 31px;
+        width: 48px;
+        height: 48px;
+        border: 3px solid white;
+        border-radius: 50%;
+        background: rgba(255, 210, 63, .82);
+        box-shadow: 3px 3px 0 rgba(20, 33, 61, .55);
+      }
+
+      .touch-actions {
+        position: absolute;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(74px, calc(env(safe-area-inset-bottom) + 63px));
+        display: grid;
+        grid-template-columns: repeat(2, 58px);
+        gap: 8px;
+        pointer-events: auto;
+      }
+
+      .touch-actions button {
+        width: 58px;
+        height: 58px;
+        padding: 0;
+        border: 3px solid white;
+        border-radius: 50%;
+        background: rgba(20, 33, 61, .72);
+        color: white;
+        box-shadow: 3px 3px 0 rgba(20, 33, 61, .45);
+        font-size: 9px;
+        letter-spacing: .5px;
+        pointer-events: auto;
+        touch-action: none;
+      }
+
+      .touch-actions .jump-button {
+        grid-column: 2;
+        background: rgba(37, 99, 235, .82);
+      }
+
+      .touch-actions .mine-button { background: rgba(255, 90, 78, .86); }
+      .touch-actions .place-button { background: rgba(33, 181, 115, .86); }
+    }
+
+    @media (max-width: 560px) {
+      .voxel-body .topbar { height: 54px; }
+      .voxel-stage { height: calc(100vh - 54px); height: calc(100dvh - 54px); }
+      .voxel-body .brand { font-size: 11px; }
+      .voxel-body .brand span { width: 29px; height: 29px; font-size: 18px; }
+      .hud-panel { padding: 7px 8px; }
+      .hud-value { font-size: 11px; }
+      .performance-stats .hud-label, .performance-stats .hud-value:last-child { display: none; }
+      .quest-card { top: 58px; }
+      .score-pill { top: 57px; }
+      .control-line { flex-direction: column; gap: 4px; }
+      .start-card { box-shadow: 8px 8px 0 var(--red); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .held-block.swing { animation: none; }
+      .toast { transition: none; }
+    }
+  </style>
+</head>
+<body class="voxel-body">
+  <header class="topbar">
+    <a class="brand" href="index.html#catalog" aria-label="Back to Recess Arcade"><span>R</span> RECESS ARCADE</a>
+    <div class="top-actions"><div class="status"><i></i> 3D WORLD · OFFLINE READY</div><a class="account-button" id="account-button" href="/signin-with-chatgpt?return_to=/voxel.html">OPTIONAL SIGN IN</a></div>
+  </header>
+
+  <main class="voxel-stage" id="voxel-stage">
+    <canvas id="voxel-canvas" aria-label="Playable first-person 3D voxel sandbox"></canvas>
+    <div class="world-vignette" aria-hidden="true"></div>
+
+    <section class="hud" aria-live="polite">
+      <div class="hud-panel world-stats">
+        <span class="hud-label">POSITION</span>
+        <span class="hud-value" id="coordinates">X 48 / Y 18 / Z 48</span>
+      </div>
+
+      <div class="quest-card">
+        <small id="quest-kicker">TRAILHEAD QUEST</small>
+        <strong id="quest-text">Mine 5 blocks to scout the frontier</strong>
+      </div>
+
+      <div class="hud-panel performance-stats">
+        <span class="hud-label">WORLD STATUS</span>
+        <span class="hud-value"><span id="fps">60</span> FPS</span><br>
+        <span class="hud-value" id="world-clock">DAY 1 - MORNING</span>
+      </div>
+
+      <div class="crosshair" aria-hidden="true"></div>
+      <div class="target-label" id="target-label">Nothing in reach</div>
+      <div class="score-pill">SCORE <strong id="score">0000</strong> / BEST <strong id="best-score">0000</strong></div>
+      <div class="desktop-hint">WASD MOVE - SPACE JUMP - SHIFT SPRINT - CLICK MINE - RIGHT CLICK PLACE - 1-8 BLOCKS</div>
+
+      <div class="hotbar" id="hotbar" aria-label="Block hotbar">
+        <button type="button" data-block="1" aria-label="Select grass block" aria-pressed="true"><kbd>1</kbd><span class="block-swatch block-grass"></span></button>
+        <button type="button" data-block="2" aria-label="Select dirt block" aria-pressed="false"><kbd>2</kbd><span class="block-swatch block-dirt"></span></button>
+        <button type="button" data-block="3" aria-label="Select stone block" aria-pressed="false"><kbd>3</kbd><span class="block-swatch block-stone"></span></button>
+        <button type="button" data-block="4" aria-label="Select wood block" aria-pressed="false"><kbd>4</kbd><span class="block-swatch block-wood"></span></button>
+        <button type="button" data-block="6" aria-label="Select sand block" aria-pressed="false"><kbd>5</kbd><span class="block-swatch block-sand"></span></button>
+        <button type="button" data-block="7" aria-label="Select brick block" aria-pressed="false"><kbd>6</kbd><span class="block-swatch block-brick"></span></button>
+        <button type="button" data-block="8" aria-label="Select glass block" aria-pressed="false"><kbd>7</kbd><span class="block-swatch block-glass"></span></button>
+        <button type="button" data-block="9" aria-label="Select crystal block" aria-pressed="false"><kbd>8</kbd><span class="block-swatch block-crystal"></span></button>
+      </div>
+
+      <div class="held-block" id="held-block" aria-hidden="true"></div>
+      <div class="toast" id="toast" role="status"></div>
+    </section>
+
+    <div class="touch-ui" id="touch-ui" aria-label="Touch game controls">
+      <div class="joystick" id="joystick" aria-label="Move joystick">
+        <div class="joystick-knob" id="joystick-knob"></div>
+      </div>
+      <div class="touch-actions">
+        <button type="button" class="jump-button" id="touch-jump">JUMP</button>
+        <button type="button" class="mine-button" id="touch-mine">MINE</button>
+        <button type="button" class="place-button" id="touch-place">PLACE</button>
+      </div>
+    </div>
+
+    <div class="world-overlay" id="world-overlay">
+      <div class="start-card">
+        <p class="eyebrow" id="overlay-kicker">GENERATING 96 x 96 WORLD</p>
+        <h1 id="overlay-title">VOXEL<br><span>FRONTIER</span></h1>
+        <p id="overlay-copy">Explore a huge procedural landscape, uncover crystal veins, build a shelter, and chase a new high score. The whole world runs directly in your browser.</p>
+        <button type="button" id="enter-world" disabled>BUILDING WORLD...</button>
+        <div class="control-line" id="control-line">
+          <span>WASD TO MOVE</span><span>MOUSE TO LOOK</span><span>CLICK TO MINE</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="profile.js"></script><script src="voxel.js"></script>
+</body>
+</html>

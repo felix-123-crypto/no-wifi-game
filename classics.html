@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14213d">
+  <meta name="description" content="Play 2048, Block Drop, and Snake locally in your browser.">
+  <title>Classic Games — Recess Arcade</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .classic-page{min-height:100vh;background:#efeadf;background-image:radial-gradient(#dcd4c4 1px,transparent 1px);background-size:18px 18px}
+    .classic-shell{width:min(1180px,100%);margin:0 auto;padding:28px 24px 70px}
+    .classic-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:26px}
+    .classic-nav .back{margin:0}
+    .classic-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .classic-tab{border:2px solid var(--ink);background:#fff;padding:9px 13px;font-size:11px;letter-spacing:1.5px;box-shadow:3px 3px 0 var(--ink)}
+    .classic-tab:hover,.classic-tab:focus-visible{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+    .classic-tab[aria-current="page"]{background:var(--yellow)}
+    .classic-heading{display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px;margin-bottom:20px}
+    .classic-heading h1{font-size:clamp(45px,7vw,84px);line-height:.88;letter-spacing:-4px;margin:3px 0 12px}
+    .classic-heading .subtitle{font-family:Georgia,serif;font-weight:400;line-height:1.5;margin:0;max-width:610px}
+    .classic-scoreboard{display:flex;gap:9px;align-items:stretch}
+    .classic-scoreboard .scorebox{min-width:92px;display:grid;align-content:center}
+    .classic-scoreboard .scorebox:last-child{background:var(--yellow)}
+    .classic-scoreboard strong{font-variant-numeric:tabular-nums}
+    .classic-console{position:relative;border:4px solid var(--ink);background:#111b34;box-shadow:10px 10px 0 var(--red);overflow:hidden}
+    .console-bar{min-height:49px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 11px;background:#fff;border-bottom:3px solid var(--ink)}
+    .console-status{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:1.5px}
+    .console-status:before{content:"";width:9px;height:9px;border:2px solid var(--ink);border-radius:50%;background:#2dc878;box-shadow:0 0 0 2px #b7f4d4}
+    .console-actions{display:flex;gap:7px}
+    .console-button{border:2px solid var(--ink);background:#fff;padding:8px 11px;cursor:pointer;font-size:10px;letter-spacing:1.2px;min-height:34px}
+    .console-button:hover,.console-button:focus-visible{background:var(--yellow)}
+    .console-button.primary{background:var(--red);color:#fff}
+    .game-panel{min-height:620px;padding:24px;place-items:center}
+    .game-panel:not([hidden]){display:grid}
+    .game-panel[hidden]{display:none}
+    .classic-overlay{position:absolute;inset:49px 0 0;z-index:40;background:rgba(13,24,49,.9);display:grid;place-items:center;padding:24px;color:#fff;backdrop-filter:blur(5px)}
+    .classic-overlay[hidden]{display:none}
+    .overlay-card{width:min(470px,100%);border:3px solid #fff;background:var(--ink);box-shadow:9px 9px 0 var(--yellow);padding:32px;text-align:center}
+    .overlay-card .mini{color:var(--yellow);font-size:10px;letter-spacing:2.5px;margin:0 0 9px}
+    .overlay-card h2{font-size:clamp(34px,7vw,52px);line-height:.95;letter-spacing:-2px;margin:0 0 13px}
+    .overlay-card p{font-family:Georgia,serif;font-weight:400;line-height:1.5;margin:0 auto 22px;max-width:370px}
+    .overlay-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
+    .overlay-actions button{border:3px solid #fff;background:var(--yellow);color:var(--ink);padding:13px 19px;cursor:pointer;box-shadow:4px 4px 0 #fff}
+    .overlay-actions .secondary{background:transparent;color:#fff;box-shadow:none}
+    .game-help{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;margin:36px auto 0}
+    .instruction-card kbd{display:inline-grid;place-items:center;min-width:27px;height:25px;padding:0 7px;border:2px solid var(--ink);border-bottom-width:4px;background:#fff;font-family:inherit;font-size:11px}
+    .feature-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+    .feature-pill{border:2px solid var(--ink);background:#f4efe5;padding:6px 8px;font-size:9px;letter-spacing:1px}
+    .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+    /* 2048 */
+    .panel-2048{background:linear-gradient(135deg,#f7ead2,#ead7b8)}
+    .game-2048-wrap{width:min(530px,100%)}
+    .game-2048-top{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:12px}
+    .game-2048-top h2{margin:0;font-size:22px;letter-spacing:-.5px}
+    .game-2048-top p{margin:2px 0 0;font-family:Georgia,serif;font-weight:400;font-size:13px}
+    .target-2048{border:2px solid #5c5146;background:#ffcf4c;padding:7px 10px;font-size:10px;letter-spacing:1px;white-space:nowrap}
+    .board-2048{--gap:12px;position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);aspect-ratio:1;padding:var(--gap);border:4px solid #4d443d;border-radius:13px;background:#a89989;box-shadow:0 11px 0 #796c60;touch-action:none;outline:none}
+    .board-2048:focus-visible{box-shadow:0 11px 0 #796c60,0 0 0 5px var(--yellow)}
+    .tile-2048{display:grid;place-items:center;aspect-ratio:1;border-radius:8px;background:#c8b9a7;color:#493f37;font-size:clamp(24px,6vw,46px);font-weight:900;letter-spacing:-2px;box-shadow:inset 0 -5px rgba(64,50,40,.12);font-variant-numeric:tabular-nums}
+    .tile-2048[data-value="0"]{color:transparent;background:#c9baa9;box-shadow:inset 0 2px 4px rgba(73,55,42,.15)}
+    .tile-2048[data-value="2"]{background:#f7eee2}.tile-2048[data-value="4"]{background:#f3dfbd}
+    .tile-2048[data-value="8"]{background:#f4a65d;color:#fff}.tile-2048[data-value="16"]{background:#f27c52;color:#fff}
+    .tile-2048[data-value="32"]{background:#ee5e4d;color:#fff}.tile-2048[data-value="64"]{background:#db3e35;color:#fff}
+    .tile-2048[data-value="128"]{background:#ebca49;color:#fff9e8;font-size:clamp(20px,5vw,38px)}
+    .tile-2048[data-value="256"]{background:#e7bd36;color:#fff9e8;font-size:clamp(20px,5vw,38px)}
+    .tile-2048[data-value="512"]{background:#dca823;color:#fff9e8;font-size:clamp(20px,5vw,38px)}
+    .tile-2048[data-value="1024"]{background:#d89120;color:#fff;font-size:clamp(17px,4.3vw,32px)}
+    .tile-2048[data-value="2048"]{background:#ffd23f;color:#14213d;font-size:clamp(17px,4.3vw,32px);box-shadow:inset 0 -5px rgba(64,50,40,.12),0 0 24px #ffd23f}
+    .tile-2048[data-large="true"]{background:#14213d;color:#fff;font-size:clamp(15px,3.8vw,28px)}
+    .tile-2048.spawn{animation:tile-pop .18s ease-out}
+    .tile-2048.merged{animation:tile-merge .2s ease-out}
+    @keyframes tile-pop{0%{transform:scale(.25);opacity:.25}100%{transform:scale(1);opacity:1}}
+    @keyframes tile-merge{50%{transform:scale(1.12)}100%{transform:scale(1)}}
+    .swipe-hint{text-align:center;margin:25px 0 0;color:#685c50;font-size:10px;letter-spacing:1.4px}
+
+    /* Tetris */
+    .panel-tetris{background:radial-gradient(circle at 50% 12%,#263f82,#0d1731 58%,#080d1d)}
+    .tetris-layout{display:grid;grid-template-columns:minmax(220px,300px) 170px;gap:23px;align-items:start}
+    .tetris-board-shell{position:relative;border:4px solid #8ca9ff;background:#090f22;padding:6px;box-shadow:0 0 0 3px #182c60,8px 9px 0 #060a16}
+    #tetris-canvas{display:block;width:100%;height:auto;aspect-ratio:1/2;background:#081125;touch-action:none}
+    .tetris-side{display:grid;gap:13px;color:#fff}
+    .tetris-card{border:3px solid #5f80dd;background:#111d3d;padding:14px;box-shadow:5px 5px 0 #060b18}
+    .tetris-card h3{margin:0 0 11px;color:#a9bbef;font-size:9px;letter-spacing:2px}
+    #next-canvas{display:block;width:100%;height:auto;aspect-ratio:1;background:#09132b;border:2px solid #344c88}
+    .tetris-stat{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid #3a4e7f;padding:8px 0}
+    .tetris-stat:last-child{border:0}
+    .tetris-stat span{font-size:9px;letter-spacing:1px;color:#9eafd9}.tetris-stat strong{font-size:21px;color:#ffd23f;font-variant-numeric:tabular-nums}
+    .tetris-keys{font-size:10px;line-height:1.8;color:#cbd5f2;font-weight:400}
+    .tetris-keys b{color:#fff}
+
+    /* Snake */
+    .panel-snake{background:linear-gradient(180deg,#bde58b,#82c75e)}
+    .snake-wrap{width:min(880px,100%)}
+    .snake-bezel{position:relative;border:5px solid #1c4128;border-radius:24px;background:#1c4128;padding:12px;box-shadow:0 10px 0 #102b1a,0 15px 25px rgba(15,43,25,.25)}
+    #snake-canvas{display:block;width:100%;height:auto;aspect-ratio:3/2;background:#b6d983;border-radius:10px;touch-action:none}
+    .snake-display-bar{display:flex;justify-content:space-between;gap:12px;margin-bottom:11px;padding:0 8px;color:#e7f8d1;font-size:10px;letter-spacing:1.7px}
+    .snake-display-bar b{color:#fff;font-variant-numeric:tabular-nums}
+    .snake-legend{display:flex;justify-content:center;gap:18px;margin-top:25px;color:#25442a;font-size:10px;letter-spacing:1px}
+    .snake-legend span{display:flex;align-items:center;gap:6px}.snake-legend i{width:10px;height:10px;border-radius:50%;background:#ff5a4e;border:2px solid #25442a}.snake-legend span:last-child i{background:#ffd23f}
+
+    .touch-bank{display:none;margin:23px auto 0;justify-content:center;align-items:center;gap:8px;touch-action:manipulation}
+    .touch-bank[hidden]{display:none!important}
+    .touch-bank button{border:3px solid var(--ink);background:#fff;min-width:55px;height:50px;padding:0 11px;box-shadow:3px 3px 0 var(--ink);font-size:18px;cursor:pointer;user-select:none;-webkit-user-select:none}
+    .touch-bank button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);background:var(--yellow)}
+    .touch-bank .wide{font-size:10px;letter-spacing:1px;min-width:72px}
+    .dpad{position:static;display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,50px);font-size:initial;line-height:normal}
+    .dpad button:nth-child(1){grid-column:2}.dpad button:nth-child(2){grid-row:2;grid-column:1}.dpad button:nth-child(3){grid-row:2;grid-column:2}.dpad button:nth-child(4){grid-row:2;grid-column:3}
+    .touch-tetris{flex-wrap:wrap}
+
+    @media(max-width:760px){
+      .classic-shell{padding:22px 14px 55px}.classic-nav{align-items:flex-start;flex-direction:column}.classic-tabs{justify-content:flex-start}
+      .classic-heading{grid-template-columns:1fr}.classic-scoreboard{width:100%}.classic-scoreboard .scorebox{flex:1;min-width:0;padding:10px 8px}
+      .game-panel{min-height:520px;padding:16px}.game-help{grid-template-columns:1fr}.touch-bank:not([hidden]){display:flex}
+      .tetris-layout{grid-template-columns:minmax(190px,290px) 130px;gap:12px}.tetris-card{padding:9px}.tetris-keys{display:none}
+      .board-2048{--gap:8px;border-width:3px}.classic-console{box-shadow:6px 7px 0 var(--red)}
+    }
+    @media(max-width:480px){
+      .classic-tab{padding:8px 9px;font-size:9px}.classic-heading h1{font-size:52px}.classic-scoreboard strong{font-size:20px}
+      .console-status{font-size:0}.console-status:after{content:"READY";font-size:9px}.console-actions{gap:4px}.console-button{padding:7px 8px;font-size:9px}
+      .game-panel{padding:13px;min-height:440px}.tetris-layout{grid-template-columns:minmax(165px,235px) 90px;gap:8px}.tetris-card h3{font-size:8px}.tetris-stat strong{font-size:15px}.tetris-stat span{font-size:7px}.tetris-board-shell{padding:3px;border-width:3px}
+      .tile-2048{border-radius:5px}.snake-bezel{padding:7px;border-width:4px;border-radius:15px}.snake-display-bar{font-size:8px;padding:0 3px}
+      .touch-bank button{min-width:48px;height:45px}.dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,45px)}
+      .overlay-card{padding:25px 18px}
+    }
+    @media(prefers-reduced-motion:reduce){.tile-2048{animation:none!important}}
+  </style>
+</head>
+<body class="game-page classic-page">
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Recess Arcade home"><span aria-hidden="true">R</span> RECESS ARCADE</a>
+    <div class="top-actions"><div class="status"><i></i> OFFLINE READY</div><a class="account-button" id="account-button" href="/signin-with-chatgpt?return_to=/classics.html">OPTIONAL SIGN IN</a></div>
+  </header>
+
+  <main class="classic-shell">
+    <nav class="classic-nav" aria-label="Game navigation">
+      <a class="back" href="index.html#catalog">&larr; BACK TO GAME SHELF</a>
+      <div class="classic-tabs">
+        <a class="classic-tab" data-game-tab="2048" href="classics.html?game=2048">2048</a>
+        <a class="classic-tab" data-game-tab="tetris" href="classics.html?game=tetris">BLOCK DROP</a>
+        <a class="classic-tab" data-game-tab="snake" href="classics.html?game=snake">SNAKE</a>
+      </div>
+    </nav>
+
+    <section class="classic-heading" aria-labelledby="game-title">
+      <div>
+        <p class="eyebrow" id="game-kicker">NUMBER PUZZLE</p>
+        <h1 id="game-title">2048</h1>
+        <p class="subtitle" id="game-subtitle">Slide matching tiles together and build the legendary 2048 tile.</p>
+      </div>
+      <div class="classic-scoreboard" aria-label="Game statistics">
+        <div class="scorebox"><small>SCORE</small><strong id="score">0</strong></div>
+        <div class="scorebox"><small>BEST</small><strong id="best">0</strong></div>
+        <div class="scorebox"><small id="extra-label">TOP TILE</small><strong id="extra-value">2</strong></div>
+      </div>
+    </section>
+
+    <section class="classic-console" aria-label="Game console">
+      <div class="console-bar">
+        <div class="console-status" id="console-status" role="status" aria-live="polite">READY TO PLAY</div>
+        <div class="console-actions">
+          <button class="console-button" id="pause-button" type="button">PAUSE</button>
+          <button class="console-button primary" id="restart-button" type="button">NEW GAME</button>
+        </div>
+      </div>
+
+      <div class="game-panel panel-2048" id="panel-2048">
+        <div class="game-2048-wrap">
+          <div class="game-2048-top">
+            <div><h2>Join the numbers</h2><p>Equal tiles combine once per move.</p></div>
+            <div class="target-2048">TARGET: 2048</div>
+          </div>
+          <div class="board-2048" id="board-2048" tabindex="0" role="grid" aria-label="2048 board. Use arrow keys or swipe to move tiles."></div>
+          <p class="swipe-hint">ARROW KEYS / WASD / SWIPE TO MOVE</p>
+        </div>
+      </div>
+
+      <div class="game-panel panel-tetris" id="panel-tetris" hidden>
+        <div class="tetris-layout">
+          <div class="tetris-board-shell"><canvas id="tetris-canvas" width="300" height="600" role="img" aria-label="Block Drop game board, ten columns by twenty rows"></canvas></div>
+          <aside class="tetris-side" aria-label="Block Drop information">
+            <div class="tetris-card"><h3>NEXT PIECE</h3><canvas id="next-canvas" width="128" height="128" role="img" aria-label="Next block piece"></canvas></div>
+            <div class="tetris-card">
+              <div class="tetris-stat"><span>LEVEL</span><strong id="tetris-level">1</strong></div>
+              <div class="tetris-stat"><span>LINES</span><strong id="tetris-lines">0</strong></div>
+            </div>
+            <div class="tetris-card tetris-keys"><b>&larr; &rarr;</b> MOVE<br><b>&uarr; / X</b> ROTATE<br><b>&darr;</b> SOFT DROP<br><b>SPACE</b> HARD DROP<br><b>Z</b> ROTATE LEFT</div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="game-panel panel-snake" id="panel-snake" hidden>
+        <div class="snake-wrap">
+          <div class="snake-bezel">
+            <div class="snake-display-bar"><span>SPEED <b id="snake-speed">1</b></span><span>LENGTH <b id="snake-length">4</b></span><span>NEXT LEVEL <b id="snake-next">5</b></span></div>
+            <canvas id="snake-canvas" width="720" height="480" role="img" aria-label="Snake game board. Guide the snake to food without hitting a wall or yourself."></canvas>
+          </div>
+          <div class="snake-legend"><span><i></i> FOOD +10</span><span><i></i> GOLDEN FOOD +25</span></div>
+        </div>
+      </div>
+
+      <div class="classic-overlay" id="game-overlay">
+        <div class="overlay-card">
+          <p class="mini" id="overlay-kicker">CLASSIC MODE</p>
+          <h2 id="overlay-title">READY?</h2>
+          <p id="overlay-copy">Use arrow keys, WASD, or swipe to slide every tile.</p>
+          <div class="overlay-actions">
+            <button id="overlay-primary" type="button">START GAME</button>
+            <button class="secondary" id="overlay-secondary" type="button" hidden>NEW GAME</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="touch-bank dpad" id="touch-2048" aria-label="2048 touch controls">
+      <button type="button" data-action="up" aria-label="Move up">&uarr;</button>
+      <button type="button" data-action="left" aria-label="Move left">&larr;</button>
+      <button type="button" data-action="down" aria-label="Move down">&darr;</button>
+      <button type="button" data-action="right" aria-label="Move right">&rarr;</button>
+    </div>
+    <div class="touch-bank touch-tetris" id="touch-tetris" aria-label="Block Drop touch controls" hidden>
+      <button type="button" data-action="left" aria-label="Move left">&larr;</button>
+      <button type="button" data-action="rotate" aria-label="Rotate clockwise">&#8635;</button>
+      <button type="button" data-action="right" aria-label="Move right">&rarr;</button>
+      <button type="button" data-action="down" aria-label="Soft drop">&darr;</button>
+      <button class="wide" type="button" data-action="drop" aria-label="Hard drop">DROP</button>
+    </div>
+    <div class="touch-bank dpad" id="touch-snake" aria-label="Snake touch controls" hidden>
+      <button type="button" data-action="up" aria-label="Turn up">&uarr;</button>
+      <button type="button" data-action="left" aria-label="Turn left">&larr;</button>
+      <button type="button" data-action="down" aria-label="Turn down">&darr;</button>
+      <button type="button" data-action="right" aria-label="Turn right">&rarr;</button>
+    </div>
+
+    <section class="game-help" aria-label="Game instructions">
+      <div class="instruction-card">
+        <h3 id="help-title">HOW TO PLAY 2048</h3>
+        <p id="help-copy">Use the arrow keys or WASD. Every move slides all tiles; two equal tiles touching in the direction of travel combine into one.</p>
+        <div class="feature-list" id="feature-list"><span class="feature-pill">KEYBOARD</span><span class="feature-pill">TOUCH + SWIPE</span><span class="feature-pill">SAVED BEST</span></div>
+      </div>
+      <div class="instruction-card">
+        <h3>BUILT FOR THE BROWSER</h3>
+        <p>Every rule, graphic, and control is included in these local files. Once the site is loaded, the game itself makes no network requests.</p>
+      </div>
+    </section>
+    <p class="sr-only" id="game-announcement" aria-live="assertive"></p>
+  </main>
+  <script src="profile.js"></script><script src="classics.js"></script>
+</body>
+</html>

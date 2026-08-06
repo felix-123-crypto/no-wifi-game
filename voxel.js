@@ -101,6 +101,8 @@
 
   const touchMove = { x: 0, y: 0 };
   const stats = { score: 0, mined: 0, placed: 0, crystals: 0 };
+  const MINED_BLOCKS_PER_ARCADE_AWARD = 4;
+  let ordinaryBlocksSinceArcadeAward = 0;
   let gl = null;
   let program = null;
   let outlineBuffer = null;
@@ -869,6 +871,24 @@
       z < playerMaxZ && z + 1 > playerMinZ;
   }
 
+  function awardArcadePoints(amount, reason) {
+    if (!running || !ready || !hasEntered) return false;
+    if (!window.RecessPoints || typeof window.RecessPoints.award !== "function") return false;
+    try {
+      window.RecessPoints.award(amount, reason);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function awardMiningArcadePoints() {
+    ordinaryBlocksSinceArcadeAward += 1;
+    if (ordinaryBlocksSinceArcadeAward < MINED_BLOCKS_PER_ARCADE_AWARD) return;
+    ordinaryBlocksSinceArcadeAward = 0;
+    awardArcadePoints(1, "Voxel Frontier: mining streak");
+  }
+
   function mineBlock() {
     if (!running || !ready) return;
     const now = performance.now();
@@ -892,10 +912,12 @@
     stats.score += block.value;
     if (id === 9) {
       stats.crystals += 1;
+      awardArcadePoints(10, "Voxel Frontier: rare crystal found");
       showToast("Crystal found! +100 frontier points");
       playTone(660, 0.08, "sine", 0.025);
       window.setTimeout(function () { playTone(880, 0.11, "sine", 0.018); }, 65);
     } else {
+      awardMiningArcadePoints();
       playTone(id === 3 ? 125 : 170, 0.045, "square", 0.018);
     }
     swingHeldBlock();
@@ -955,6 +977,7 @@
     const nextStage = calculateQuestStage();
     if (nextStage > questStage) {
       stats.score += 50;
+      awardArcadePoints(6, "Voxel Frontier: quest complete");
       showToast("Quest complete! +50 bonus points");
       playTone(520, 0.07, "sine", 0.02);
       questStage = nextStage;

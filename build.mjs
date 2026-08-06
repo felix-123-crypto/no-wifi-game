@@ -6,7 +6,7 @@ const root = process.cwd();
 const dist = join(root, 'dist');
 const client = join(dist, 'client');
 const files = [
-  'index.html','styles.css','app.js','profile.js','game.html','games.js',
+  'index.html','styles.css','theme.css','app.js','economy.js','shop.html','shop.js','game.html','games.js',
   'voxel.html','voxel.js','football.html','football.js',
   'classics.html','classics.js','manifest.webmanifest','sw.js','og.png'
 ];

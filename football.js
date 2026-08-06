@@ -331,7 +331,7 @@
   function createPlayer(x,y,team,index){return{x,y,vx:0,vy:0,r:17,team,index,cooldown:0,homeX:x,homeY:y};}
   function setupGame(mode){
     const duration=modeDetails[mode].time;
-    game={mode,active:false,finished:false,time:duration,homeScore:0,awayScore:0,skillScore:0,combo:0,controlled:0,messageTime:0,resetTime:0,opponentKick:0,
+    game={mode,active:false,finished:false,arcadePointsAwarded:false,time:duration,homeScore:0,awayScore:0,skillScore:0,combo:0,controlled:0,messageTime:0,resetTime:0,opponentKick:0,
       home:[createPlayer(300,270,'home',0),createPlayer(180,155,'home',1),createPlayer(180,385,'home',2)],
       away:mode==='skill'?[]:[createPlayer(650,270,'away',0),createPlayer(780,155,'away',1),createPlayer(780,385,'away',2)],
       ball:{x:480,y:270,vx:0,vy:0,r:10},target:{x:875,y:150+Math.random()*240,r:29,phase:0},shots:0,passes:0
@@ -430,23 +430,33 @@
     let candidates=game.home.filter((_,index)=>index!==game.controlled);candidates.sort((a,b)=>b.x-a.x||Math.abs(a.y-ball.y)-Math.abs(b.y-ball.y));const target=candidates[0];if(!target)return;
     const dx=target.x-ball.x,dy=target.y-ball.y,d=Math.hypot(dx,dy)||1;ball.vx=dx/d*410;ball.vy=dy/d*410;game.controlled=target.index;game.passes++;tone(390,.05,'triangle');
   }
+  function awardArcadePoints(amount,reason){
+    if(!game||game.arcadePointsAwarded||!Number.isFinite(amount)||amount<=0)return;
+    game.arcadePointsAwarded=true;
+    try{
+      if(typeof window.RecessPoints?.award==='function')window.RecessPoints.award(Math.round(amount),reason);
+    }catch(error){ /* The host points display is optional and must never interrupt a match result. */ }
+  }
   function finishGame(){
     if(!game||game.finished)return;game.active=false;game.finished=true;
-    let title,copy,icon='🏁',coinReward=0,rpChange=0;
+    let title,copy,icon='🏁',coinReward=0,rpChange=0,arcadePoints=0,arcadeReason='';
     if(game.mode==='skill'){
       const isBest=game.skillScore>state.skillBest;state.skillBest=Math.max(state.skillBest,game.skillScore);coinReward=120+Math.floor(game.skillScore/20);state.coins+=coinReward;state.xp+=25;title=isBest?'NEW RECORD!':'SESSION COMPLETE';copy=`You scored ${nf.format(game.skillScore)} points and earned ${nf.format(coinReward)} coins.`;icon='🎯';
+      arcadePoints=10+Math.min(70,Math.floor(game.skillScore/100));arcadeReason=`Kickoff Zero skill performance: ${game.skillScore} points`;
     }else{
       const result=game.homeScore>game.awayScore?'win':game.homeScore<game.awayScore?'loss':'draw';
       if(result==='win'){state.wins++;coinReward=game.mode==='tournament'?500:320;rpChange=game.mode==='ranked'?45:0;title='VICTORY!';icon='🏆';}
       else if(result==='loss'){state.losses++;coinReward=90;rpChange=game.mode==='ranked'?-18:0;title='FULL TIME';icon='◆';}
       else{state.draws++;coinReward=160;rpChange=game.mode==='ranked'?8:0;title='DRAW';icon='⚖';}
+      arcadePoints=result==='win'?40:result==='draw'?25:15;arcadeReason=`Kickoff Zero ${game.mode} match ${result}`;
       state.coins+=coinReward;state.rankPoints=Math.max(0,state.rankPoints+rpChange);state.xp+=result==='win'?60:30;
       if(game.mode==='tournament'){
-        if(result==='win'){state.cupWins++;if(state.cupWins>=3){state.cups++;state.cupWins=0;coinReward+=900;state.coins+=900;title='ZERO CUP WON!';copy='Three wins complete! Trophy secured, plus 900 bonus coins.';icon='♛';}}
+        if(result==='win'){state.cupWins++;if(state.cupWins>=3){state.cups++;state.cupWins=0;coinReward+=900;state.coins+=900;title='ZERO CUP WON!';copy='Three wins complete! Trophy secured, plus 900 bonus coins.';icon='♛';arcadePoints+=100;arcadeReason='Kickoff Zero tournament championship';}}
         else state.cupWins=0;
       }
       copy ||= `${game.homeScore}–${game.awayScore}. You earned ${nf.format(coinReward)} coins${rpChange?` and ${rpChange>0?'+':''}${rpChange} RP`:''}.`;
     }
+    awardArcadePoints(arcadePoints,arcadeReason);
     saveState();renderWallet();$('#match-overlay-icon').textContent=icon;$('#match-overlay-title').textContent=title;$('#match-overlay-copy').textContent=copy;$('#result-stats').innerHTML=`<span>${game.mode==='skill'?nf.format(game.skillScore)+' PTS':game.homeScore+' - '+game.awayScore}</span><span>+${nf.format(coinReward)} ●</span>${rpChange?`<span>${rpChange>0?'+':''}${rpChange} RP</span>`:''}`;$('#match-begin').textContent='PLAY AGAIN';$('#match-begin').dataset.result='true';$('#match-overlay').hidden=false;tone(title.includes('VICTORY')||title.includes('WON')?760:260,.25,'triangle');
   }
   function gameLoop(timestamp){

@@ -69,6 +69,13 @@
     }
   }
 
+  function awardArcadePoints(amount, reason) {
+    const points = Math.max(0, Math.floor(Number(amount) || 0));
+    if (!points || !window.RecessPoints || typeof window.RecessPoints.award !== 'function') return;
+    try { window.RecessPoints.award(points, reason); }
+    catch (_) { /* Point tracking must never interrupt the active game. */ }
+  }
+
   function setStatus(message) {
     statusEl.textContent = message;
   }
@@ -122,12 +129,66 @@
   let won2048 = false;
   let fresh2048 = new Set();
   let merged2048 = new Set();
+  const MOVE_2048_LOCK_MS = 200;
+  const INPUT_2048_DEBOUNCE_MS = 55;
+  let input2048Locked = false;
+  let input2048Queue = [];
+  let input2048Timer = 0;
+  let last2048Intent = null;
 
   function empty2048Board() {
     return Array.from({ length: 4 }, () => Array(4).fill(0));
   }
 
+  function reset2048Input() {
+    window.clearTimeout(input2048Timer);
+    input2048Timer = 0;
+    input2048Locked = false;
+    input2048Queue = [];
+    last2048Intent = null;
+  }
+
+  function release2048Input() {
+    input2048Timer = 0;
+    input2048Locked = false;
+    if (!active2048 || paused2048 || !overlay.hidden) {
+      input2048Queue = [];
+      return;
+    }
+    const next = input2048Queue.shift();
+    if (next) run2048Move(next.direction);
+  }
+
+  function run2048Move(direction) {
+    const moved = move2048(direction);
+    if (!moved) {
+      const next = input2048Queue.shift();
+      if (next) run2048Move(next.direction);
+      return;
+    }
+    if (!active2048 || paused2048 || !overlay.hidden) {
+      reset2048Input();
+      return;
+    }
+    input2048Locked = true;
+    input2048Timer = window.setTimeout(release2048Input, MOVE_2048_LOCK_MS);
+  }
+
+  function request2048Move(direction, source = 'unknown') {
+    if (!['up', 'down', 'left', 'right'].includes(direction)) return;
+    if (!active2048 || paused2048 || !overlay.hidden) return;
+    const now = performance.now();
+    if (last2048Intent && last2048Intent.direction === direction && now - last2048Intent.time < INPUT_2048_DEBOUNCE_MS) return;
+    last2048Intent = { direction, source, time: now };
+    if (input2048Locked) {
+      if (input2048Queue.length < 2) input2048Queue.push({ direction, source });
+      return;
+    }
+    run2048Move(direction);
+  }
+
   function start2048() {
+    reset2048Input();
     board2048 = empty2048Board();
     active2048 = true;
     paused2048 = false;
@@ -157,19 +218,22 @@
     const compact = values.filter(Boolean);
     const output = [];
     const mergePositions = [];
+    const mergeValues = [];
+    let scoreGain = 0;
     for (let i = 0; i < compact.length; i += 1) {
       if (compact[i] === compact[i + 1]) {
         const merged = compact[i] * 2;
         output.push(merged);
         mergePositions.push(output.length - 1);
-        setScore(commonScore + merged);
+        mergeValues.push(merged);
+        scoreGain += merged;
         i += 1;
       } else {
         output.push(compact[i]);
       }
     }
     while (output.length < 4) output.push(0);
-    return { values: output, mergePositions };
+    return { values: output, mergePositions, mergeValues, scoreGain };
   }
 
   function get2048Line(index, direction) {
@@ -193,18 +257,26 @@
   }
 
   function move2048(direction) {
-    if (!active2048 || paused2048 || !overlay.hidden) return;
+    if (!active2048 || paused2048 || !overlay.hidden) return false;
     const before = JSON.stringify(board2048);
+    const mergeValues = [];
+    let scoreGain = 0;
     fresh2048.clear();
     merged2048.clear();
     for (let line = 0; line < 4; line += 1) {
       const result = collapse2048Line(get2048Line(line, direction));
       set2048Line(line, direction, result.values, result.mergePositions);
+      mergeValues.push(...result.mergeValues);
+      scoreGain += result.scoreGain;
     }
     if (before === JSON.stringify(board2048)) {
       setStatus('NO MOVE — TRY ANOTHER WAY');
-      return;
+      return false;
     }
+    if (scoreGain) setScore(commonScore + scoreGain);
+    mergeValues.forEach((merged) => {
+      awardArcadePoints(Math.max(1, Math.log2(merged) - 1), `Merged a ${merged} tile in 2048`);
+    });
     add2048Tile();
     render2048();
     setStatus(`${direction.toUpperCase()} MOVE`);
@@ -218,10 +290,12 @@
       }, 'NEW GAME', start2048);
     } else if (!canMove2048()) {
       active2048 = false;
+      input2048Queue = [];
       setStatus('NO MOVES LEFT');
       announce(`Game over. Your score is ${commonScore}.`);
       openOverlay('NO MORE MOVES', `Final score: ${commonScore.toLocaleString()}. Build from the corners and try again.`, 'PLAY AGAIN', start2048);
     }
+    return true;
   }
 
   function canMove2048() {
@@ -236,7 +310,7 @@
   }
 
   function render2048() {
-    board2048El.replaceChildren();
+    const fragment = document.createDocumentFragment();
     let topTile = 0;
     board2048.forEach((row, r) => row.forEach((value, c) => {
       const tile = document.createElement('div');
@@ -245,18 +319,23 @@
       if (value > 2048) tile.dataset.large = 'true';
       if (fresh2048.has(`${r},${c}`)) tile.classList.add('spawn');
       if (merged2048.has(`${r},${c}`)) tile.classList.add('merged');
+      if (tile.classList.contains('spawn') || tile.classList.contains('merged')) {
+        tile.addEventListener('animationend', () => tile.classList.remove('spawn', 'merged'), { once: true });
+      }
       tile.setAttribute('role', 'gridcell');
       tile.setAttribute('aria-label', value ? String(value) : 'empty');
       tile.textContent = value || '';
-      board2048El.append(tile);
+      fragment.append(tile);
       topTile = Math.max(topTile, value);
     }));
+    board2048El.replaceChildren(fragment);
     extraValueEl.textContent = String(topTile || 2);
     board2048El.setAttribute('aria-label', `2048 board. Highest tile ${topTile || 2}. Score ${commonScore}.`);
   }
 
   function pause2048() {
     if (!active2048) return;
+    reset2048Input();
     paused2048 = true;
     pauseButton.textContent = 'RESUME';
     setStatus('PAUSED');
@@ -431,6 +510,8 @@
     tLevel = Math.floor(tLines / 10) + 1;
     const points = [0, 100, 300, 500, 800][cleared] * tLevel;
     setScore(commonScore + points);
+    const arcadePoints = cleared * 15 + [0, 0, 10, 25, 60][cleared];
+    awardArcadePoints(arcadePoints, `Cleared ${cleared} ${cleared === 1 ? 'row' : 'rows'} in Block Drop`);
     updateTetrisStats();
     setStatus(cleared === 4 ? `TETRIS! +${points}` : `${cleared} LINE${cleared > 1 ? 'S' : ''} +${points}`);
     announce(cleared === 4 ? 'Tetris! Four lines cleared.' : `${cleared} lines cleared.`);
@@ -617,6 +698,7 @@
       snakeEaten += 1;
       const points = ateGolden ? 25 * snakeLevel : 10 * snakeLevel;
       setScore(commonScore + points);
+      awardArcadePoints(ateGolden ? 10 : 3, ateGolden ? 'Ate golden food in Snake' : 'Ate food in Snake');
       createSnakeParticles(snakeFood.x * S_CELL + 12, snakeFood.y * S_CELL + 12, ateGolden ? '#ffd23f' : '#ff5a4e');
       snakeLevel = Math.floor(snakeEaten / 5) + 1;
       spawnSnakeFood();
@@ -800,7 +882,7 @@
       return;
     }
     const directionFromKey = { arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down', arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right' }[key];
-    if (currentGame === '2048' && directionFromKey && !event.repeat) move2048(directionFromKey);
+    if (currentGame === '2048' && directionFromKey && !event.repeat) request2048Move(directionFromKey, 'keyboard');
     if (currentGame === 'snake' && directionFromKey) queueSnakeDirection(directionFromKey);
     if (currentGame === 'tetris') {
       if (directionFromKey === 'left') moveTetris(-1);
@@ -814,9 +896,10 @@
 
   $$('[id^="touch-"] button').forEach((button) => {
     button.addEventListener('pointerdown', (event) => {
+      if (event.isPrimary === false) return;
       event.preventDefault();
       const action = button.dataset.action;
-      if (currentGame === '2048') move2048(action);
+      if (currentGame === '2048') request2048Move(action, 'touch-button');
       else if (currentGame === 'snake') queueSnakeDirection(action);
       else if (action === 'left') moveTetris(-1);
       else if (action === 'right') moveTetris(1);
@@ -829,11 +912,12 @@
   function addSwipeControls(element, callback) {
     let start = null;
     element.addEventListener('pointerdown', (event) => {
-      start = { x: event.clientX, y: event.clientY };
+      if (event.isPrimary === false) return;
+      start = { x: event.clientX, y: event.clientY, id: event.pointerId };
       try { element.setPointerCapture(event.pointerId); } catch (_) { /* Pointer capture is optional. */ }
     });
     element.addEventListener('pointerup', (event) => {
-      if (!start) return;
+      if (!start || event.pointerId !== start.id) return;
       const dx = event.clientX - start.x;
       const dy = event.clientY - start.y;
       start = null;
@@ -843,7 +927,7 @@
     element.addEventListener('pointercancel', () => { start = null; });
   }
 
-  addSwipeControls(board2048El, move2048);
+  addSwipeControls(board2048El, (direction) => request2048Move(direction, 'swipe'));
   addSwipeControls(snakeCanvas, queueSnakeDirection);
   addSwipeControls(tetrisCanvas, (direction) => {
     if (direction === 'left') moveTetris(-1);

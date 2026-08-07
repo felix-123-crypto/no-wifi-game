@@ -205,12 +205,12 @@
     board2048El.focus();
   }
 
-  function add2048Tile() {
+  function add2048Tile(board = board2048) {
     const empty = [];
-    board2048.forEach((row, r) => row.forEach((value, c) => { if (!value) empty.push([r, c]); }));
+    board.forEach((row, r) => row.forEach((value, c) => { if (!value) empty.push([r, c]); }));
     if (!empty.length) return;
     const [r, c] = empty[Math.floor(Math.random() * empty.length)];
-    board2048[r][c] = Math.random() < 0.9 ? 2 : 4;
+    board[r][c] = Math.random() < 0.9 ? 2 : 4;
     fresh2048.add(`${r},${c}`);
   }
 
@@ -218,14 +218,12 @@
     const compact = values.filter(Boolean);
     const output = [];
     const mergePositions = [];
-    const mergeValues = [];
     let scoreGain = 0;
     for (let i = 0; i < compact.length; i += 1) {
       if (compact[i] === compact[i + 1]) {
         const merged = compact[i] * 2;
         output.push(merged);
         mergePositions.push(output.length - 1);
-        mergeValues.push(merged);
         scoreGain += merged;
         i += 1;
       } else {
@@ -233,17 +231,17 @@
       }
     }
     while (output.length < 4) output.push(0);
-    return { values: output, mergePositions, mergeValues, scoreGain };
+    return { values: output, mergePositions, scoreGain };
   }
 
-  function get2048Line(index, direction) {
-    if (direction === 'left') return board2048[index].slice();
-    if (direction === 'right') return board2048[index].slice().reverse();
-    if (direction === 'up') return board2048.map((row) => row[index]);
-    return board2048.map((row) => row[index]).reverse();
+  function get2048Line(board, index, direction) {
+    if (direction === 'left') return board[index].slice();
+    if (direction === 'right') return board[index].slice().reverse();
+    if (direction === 'up') return board.map((row) => row[index]);
+    return board.map((row) => row[index]).reverse();
   }
 
-  function set2048Line(index, direction, values, mergePositions) {
+  function set2048Line(board, index, direction, values, mergePositions) {
     values.forEach((value, p) => {
       let r;
       let c;
@@ -251,32 +249,41 @@
       else if (direction === 'right') { r = index; c = 3 - p; }
       else if (direction === 'up') { r = p; c = index; }
       else { r = 3 - p; c = index; }
-      board2048[r][c] = value;
+      board[r][c] = value;
       if (mergePositions.includes(p)) merged2048.add(`${r},${c}`);
     });
   }
 
+  function boardsEqual2048(first, second) {
+    for (let r = 0; r < 4; r += 1) {
+      for (let c = 0; c < 4; c += 1) {
+        if (first[r][c] !== second[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
   function move2048(direction) {
     if (!active2048 || paused2048 || !overlay.hidden) return false;
-    const before = JSON.stringify(board2048);
-    const mergeValues = [];
+    const before = board2048.map((row) => row.slice());
+    const nextBoard = before.map((row) => row.slice());
     let scoreGain = 0;
     fresh2048.clear();
     merged2048.clear();
     for (let line = 0; line < 4; line += 1) {
-      const result = collapse2048Line(get2048Line(line, direction));
-      set2048Line(line, direction, result.values, result.mergePositions);
-      mergeValues.push(...result.mergeValues);
+      const result = collapse2048Line(get2048Line(before, line, direction));
+      set2048Line(nextBoard, line, direction, result.values, result.mergePositions);
       scoreGain += result.scoreGain;
     }
-    if (before === JSON.stringify(board2048)) {
+    if (boardsEqual2048(before, nextBoard)) {
       setStatus('NO MOVE — TRY ANOTHER WAY');
       return false;
     }
-    if (scoreGain) setScore(commonScore + scoreGain);
-    mergeValues.forEach((merged) => {
-      awardArcadePoints(Math.max(1, Math.log2(merged) - 1), `Merged a ${merged} tile in 2048`);
-    });
+    board2048 = nextBoard;
+    if (scoreGain) {
+      setScore(commonScore + scoreGain);
+      awardArcadePoints(Math.max(1, Math.floor(scoreGain / 4)), `Scored ${scoreGain} points in 2048`);
+    }
     add2048Tile();
     render2048();
     setStatus(`${direction.toUpperCase()} MOVE`);
@@ -298,12 +305,12 @@
     return true;
   }
 
-  function canMove2048() {
+  function canMove2048(board = board2048) {
     for (let r = 0; r < 4; r += 1) {
       for (let c = 0; c < 4; c += 1) {
-        if (!board2048[r][c]) return true;
-        if (c < 3 && board2048[r][c] === board2048[r][c + 1]) return true;
-        if (r < 3 && board2048[r][c] === board2048[r + 1][c]) return true;
+        if (!board[r][c]) return true;
+        if (c < 3 && board[r][c] === board[r][c + 1]) return true;
+        if (r < 3 && board[r][c] === board[r + 1][c]) return true;
       }
     }
     return false;

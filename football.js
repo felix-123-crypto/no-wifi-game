@@ -334,7 +334,7 @@
     game={mode,active:false,finished:false,arcadePointsAwarded:false,time:duration,homeScore:0,awayScore:0,skillScore:0,combo:0,controlled:0,messageTime:0,resetTime:0,opponentKick:0,
       home:[createPlayer(300,270,'home',0),createPlayer(180,155,'home',1),createPlayer(180,385,'home',2)],
       away:mode==='skill'?[]:[createPlayer(650,270,'away',0),createPlayer(780,155,'away',1),createPlayer(780,385,'away',2)],
-      ball:{x:480,y:270,vx:0,vy:0,r:10},target:{x:875,y:150+Math.random()*240,r:29,phase:0},shots:0,passes:0
+      ball:{x:480,y:270,vx:0,vy:0,r:10},lastTouch:'home',target:{x:875,y:150+Math.random()*240,r:29,phase:0},shots:0,passes:0
     };
     updateScoreUI();drawGame();
   }
@@ -385,18 +385,18 @@
       moveAI(player,tx,ty,dt,142+(currentOpponent.ovr-70)*1.5);player.cooldown=Math.max(0,player.cooldown-dt);
       if(player===chaser&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<30&&player.cooldown<=0){
         const targetX=field.left+92,targetY=Math.max(field.goalTop+32,Math.min(field.goalBottom-32,270+(Math.random()-.5)*70));
-        const angle=Math.atan2(targetY-player.y,targetX-player.x)+(Math.random()-.5)*.12;game.ball.vx=Math.cos(angle)*390;game.ball.vy=Math.sin(angle)*390;player.cooldown=.8;game.opponentKick++;tone(170,.04,'square');
+        const angle=Math.atan2(targetY-player.y,targetX-player.x)+(Math.random()-.5)*.12;game.ball.vx=Math.cos(angle)*390;game.ball.vy=Math.sin(angle)*390;game.lastTouch='away';player.cooldown=.8;game.opponentKick++;tone(170,.04,'square');
       }
     });
   }
   function collidePlayersWithBall(players){
     players.forEach(player=>{
       const dx=game.ball.x-player.x,dy=game.ball.y-player.y,d=Math.hypot(dx,dy)||1,min=player.r+game.ball.r;
-      if(d<min){const overlap=min-d;game.ball.x+=dx/d*overlap;game.ball.y+=dy/d*overlap;game.ball.vx+=player.vx*.28+dx/d*35;game.ball.vy+=player.vy*.28+dy/d*35;}
+      if(d<min){const overlap=min-d;game.ball.x+=dx/d*overlap;game.ball.y+=dy/d*overlap;game.ball.vx+=player.vx*.28+dx/d*35;game.ball.vy+=player.vy*.28+dy/d*35;game.lastTouch=player.team;}
     });
   }
   function resetPositions(direction=0){
-    game.ball.x=480;game.ball.y=270;game.ball.vx=direction*50;game.ball.vy=0;
+    game.ball.x=480;game.ball.y=270;game.ball.vx=direction*50;game.ball.vy=0;game.lastTouch=direction<0?'away':'home';
     [[300,270],[180,155],[180,385]].forEach((p,i)=>Object.assign(game.home[i],{x:p[0],y:p[1],vx:0,vy:0}));
     game.away.forEach((player,i)=>{const p=[[650,270],[780,155],[780,385]][i];Object.assign(player,{x:p[0],y:p[1],vx:0,vy:0});});
     game.resetTime=.7;
@@ -415,7 +415,16 @@
       if(ball.x>field.right+30||ball.x<field.left-30||ball.y<field.top-30||ball.y>field.bottom+30){game.combo=0;ball.x=game.home[game.controlled].x+25;ball.y=game.home[game.controlled].y;ball.vx=ball.vy=0;}
     }else{
       const inGoal=ball.y>field.goalTop&&ball.y<field.goalBottom;
-      if(ball.x>field.right+14&&inGoal){scoreGoal('home');return;}if(ball.x<field.left-14&&inGoal){scoreGoal('away');return;}
+      if(ball.x>field.right+14&&inGoal){scoreGoal('home');return;}
+      if(ball.x<field.left-14&&inGoal){
+        if(game.lastTouch==='home'){
+          showMatchMessage('CLEAR!');
+          tone(360,.08,'triangle');
+          resetPositions(1);
+          return;
+        }
+        scoreGoal('away');return;
+      }
       // Always give a wall bounce a small impulse. Without this floor, a ball
       // that has slowed to zero in a corner reflects with `-Math.abs(0)` and
       // remains pinned there forever.
@@ -436,12 +445,12 @@
   }
   function actionShoot(){
     if(!game?.active||game.resetTime>0)return;const player=game.home[game.controlled],ball=game.ball;if(Math.hypot(player.x-ball.x,player.y-ball.y)>48){showMatchMessage('GET CLOSER');return;}
-    let targetY=game.mode==='skill'?game.target.y:270+(input.down?85:0)-(input.up?85:0),targetX=field.right+35,dx=targetX-ball.x,dy=targetY-ball.y,d=Math.hypot(dx,dy)||1;ball.vx=dx/d*590;ball.vy=dy/d*590;game.shots++;tone(280,.07,'square');vibrate(18);
+    let targetY=game.mode==='skill'?game.target.y:270+(input.down?85:0)-(input.up?85:0),targetX=field.right+35,dx=targetX-ball.x,dy=targetY-ball.y,d=Math.hypot(dx,dy)||1;ball.vx=dx/d*590;ball.vy=dy/d*590;game.lastTouch='home';game.shots++;tone(280,.07,'square');vibrate(18);
   }
   function actionPass(){
     if(!game?.active)return;const player=game.home[game.controlled],ball=game.ball;if(Math.hypot(player.x-ball.x,player.y-ball.y)>50)return;
     let candidates=game.home.filter((_,index)=>index!==game.controlled);candidates.sort((a,b)=>b.x-a.x||Math.abs(a.y-ball.y)-Math.abs(b.y-ball.y));const target=candidates[0];if(!target)return;
-    const dx=target.x-ball.x,dy=target.y-ball.y,d=Math.hypot(dx,dy)||1;ball.vx=dx/d*410;ball.vy=dy/d*410;game.controlled=target.index;game.passes++;tone(390,.05,'triangle');
+    const dx=target.x-ball.x,dy=target.y-ball.y,d=Math.hypot(dx,dy)||1;ball.vx=dx/d*410;ball.vy=dy/d*410;game.lastTouch='home';game.controlled=target.index;game.passes++;tone(390,.05,'triangle');
   }
   function switchPlayer(){
     if(!game?.active)return;

@@ -11,13 +11,23 @@
     dispatchEvent(new CustomEvent('recess-points-changed', {detail:{balance:balance()}}));
   };
   let toastTimer = 0;
+  let toastBatchAt = 0;
+  let toastBatchTotal = 0;
+  let toastBatchReasons = [];
   const toast = (amount, reason) => {
     if (!document.body) return;
     let el = document.querySelector('.points-toast');
     if (!el) { el = document.createElement('div'); el.className = 'points-toast'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite'); document.body.append(el); }
-    el.innerHTML = `<strong>+${amount} PTS</strong><span>${String(reason || 'ARCADE REWARD').toUpperCase()}</span>`;
+    const now = Date.now();
+    if (now - toastBatchAt > 450) { toastBatchTotal = 0; toastBatchReasons = []; }
+    toastBatchAt = now;
+    toastBatchTotal += amount;
+    const label = String(reason || 'ARCADE REWARD').toUpperCase();
+    if (label && !toastBatchReasons.includes(label)) toastBatchReasons.push(label);
+    const reasonLabel = toastBatchReasons.length > 1 ? 'MULTIPLE ARCADE REWARDS' : (toastBatchReasons[0] || 'ARCADE REWARD');
+    el.innerHTML = `<strong>+${toastBatchTotal} PTS</strong><span>${reasonLabel}</span>`;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1500);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('show'); toastBatchTotal = 0; toastBatchReasons = []; }, 1500);
   };
   const award = (amount, reason = 'Arcade reward') => {
     const value = Math.max(0, Math.floor(Number(amount) || 0));

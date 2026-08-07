@@ -219,19 +219,23 @@
     const output = [];
     const mergePositions = [];
     let scoreGain = 0;
+    let arcadePointGain = 0;
+    let mergeCount = 0;
     for (let i = 0; i < compact.length; i += 1) {
       if (compact[i] === compact[i + 1]) {
         const merged = compact[i] * 2;
         output.push(merged);
         mergePositions.push(output.length - 1);
         scoreGain += merged;
+        arcadePointGain += Math.max(1, Math.floor(Math.log2(merged) - 1));
+        mergeCount += 1;
         i += 1;
       } else {
         output.push(compact[i]);
       }
     }
     while (output.length < 4) output.push(0);
-    return { values: output, mergePositions, scoreGain };
+    return { values: output, mergePositions, scoreGain, arcadePointGain, mergeCount };
   }
 
   function get2048Line(board, index, direction) {
@@ -268,12 +272,16 @@
     const before = board2048.map((row) => row.slice());
     const nextBoard = before.map((row) => row.slice());
     let scoreGain = 0;
+    let arcadePointGain = 0;
+    let mergeCount = 0;
     fresh2048.clear();
     merged2048.clear();
     for (let line = 0; line < 4; line += 1) {
       const result = collapse2048Line(get2048Line(before, line, direction));
       set2048Line(nextBoard, line, direction, result.values, result.mergePositions);
       scoreGain += result.scoreGain;
+      arcadePointGain += result.arcadePointGain;
+      mergeCount += result.mergeCount;
     }
     if (boardsEqual2048(before, nextBoard)) {
       setStatus('NO MOVE — TRY ANOTHER WAY');
@@ -282,11 +290,17 @@
     board2048 = nextBoard;
     if (scoreGain) {
       setScore(commonScore + scoreGain);
-      awardArcadePoints(Math.max(1, Math.floor(scoreGain / 4)), `Scored ${scoreGain} points in 2048`);
+      const comboBonus = mergeCount > 1 ? (mergeCount - 1) * 2 : 0;
+      awardArcadePoints(arcadePointGain + comboBonus, mergeCount > 1
+        ? `2048 COMBO x${mergeCount} (+${comboBonus} bonus)`
+        : `2048 scored ${scoreGain} points`);
     }
     add2048Tile();
     render2048();
-    setStatus(`${direction.toUpperCase()} MOVE`);
+    const comboBonus = mergeCount > 1 ? (mergeCount - 1) * 2 : 0;
+    setStatus(mergeCount > 1
+      ? `${direction.toUpperCase()} COMBO x${mergeCount} +${comboBonus}`
+      : `${direction.toUpperCase()} MOVE`);
     const topTile = Math.max(...board2048.flat());
     if (topTile >= 2048 && !won2048) {
       won2048 = true;

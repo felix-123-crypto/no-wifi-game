@@ -1,6 +1,98 @@
-const VERSION='recess-v4';
-const CORE=['./','./index.html','./styles.css','./theme.css','./app.js','./economy.js','./shop.html','./shop.js','./game.html','./games.js','./voxel.html','./voxel.js','./football.html','./football.js','./classics.html','./classics.js','./manifest.webmanifest','./og.png'];
-self.addEventListener('install',event=>event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==VERSION).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
-const ROUTES={'/':'./index.html','/game':'./game.html','/voxel':'./voxel.html','/football':'./football.html','/classics':'./classics.html','/shop':'./shop.html'};
-self.addEventListener('fetch',event=>{if(event.request.method!=='GET')return;const url=new URL(event.request.url);event.respondWith(caches.match(event.request,{ignoreSearch:event.request.mode==='navigate'}).then(async hit=>{if(hit)return hit;if(event.request.mode==='navigate'&&ROUTES[url.pathname]){const offline=await caches.match(ROUTES[url.pathname]);if(offline)return offline}return fetch(event.request).then(response=>{if(response.ok&&response.type==='basic'){const copy=response.clone();caches.open(VERSION).then(cache=>cache.put(event.request,copy))}return response}).catch(()=>event.request.mode==='navigate'?caches.match('./index.html'):Response.error())}))});
+const VERSION='recess-v5';
+const PRECACHE=[
+  ['/', '/index.html'],
+  ['/styles.css', '/styles.css'],
+  ['/theme.css', '/theme.css'],
+  ['/app.js', '/app.js'],
+  ['/economy.js', '/economy.js'],
+  ['/shop', '/shop.html'],
+  ['/shop.js', '/shop.js'],
+  ['/game', '/game.html'],
+  ['/games.js', '/games.js'],
+  ['/voxel', '/voxel.html'],
+  ['/voxel.js', '/voxel.js'],
+  ['/football', '/football.html'],
+  ['/football.js', '/football.js'],
+  ['/classics', '/classics.html'],
+  ['/classics.js', '/classics.js'],
+  ['/manifest.webmanifest', '/manifest.webmanifest'],
+  ['/og.png', '/og.png']
+];
+const ROUTES={
+  '/':'/', '/index.html':'/',
+  '/game':'/game', '/game.html':'/game',
+  '/voxel':'/voxel', '/voxel.html':'/voxel',
+  '/football':'/football', '/football.html':'/football',
+  '/classics':'/classics', '/classics.html':'/classics',
+  '/shop':'/shop', '/shop.html':'/shop'
+};
+
+const safeCopy=async response=>{
+  if(!response.redirected)return response;
+  const headers=new Headers();
+  const contentType=response.headers.get('content-type');
+  if(contentType)headers.set('content-type',contentType);
+  return new Response(await response.blob(),{status:200,statusText:'OK',headers});
+};
+
+self.addEventListener('install',event=>event.waitUntil((async()=>{
+  const cache=await caches.open(VERSION);
+  await Promise.all(PRECACHE.map(async([key,source])=>{
+    const response=await fetch(source,{cache:'reload'});
+    if(!response.ok)throw new Error(`Unable to cache ${source}`);
+    await cache.put(key,await safeCopy(response));
+  }));
+  await self.skipWaiting();
+})()));
+
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(key=>key!==VERSION).map(key=>caches.delete(key)));
+  await self.clients.claim();
+})()));
+
+const offlineDocument=async pathname=>{
+  const key=ROUTES[pathname]||'/';
+  return await caches.match(key)||await caches.match('/')||new Response(
+    '<!doctype html><meta charset="utf-8"><title>Recess Arcade offline</title><h1>Recess Arcade is offline</h1><p>Reconnect once so this game can be saved for offline play.</p>',
+    {status:503,headers:{'content-type':'text/html; charset=utf-8'}}
+  );
+};
+
+self.addEventListener('fetch',event=>{
+  if(event.request.method!=='GET')return;
+  const url=new URL(event.request.url);
+  if(url.origin!==self.location.origin)return;
+  if(event.request.mode==='navigate'){
+    event.respondWith((async()=>{
+      try{
+        const response=await fetch(event.request);
+        if(response.ok){
+          const key=ROUTES[url.pathname];
+          if(key){
+            const cache=await caches.open(VERSION);
+            await cache.put(key,await safeCopy(response.clone()));
+          }
+        }
+        return response;
+      }catch(error){
+        return offlineDocument(url.pathname);
+      }
+    })());
+    return;
+  }
+  event.respondWith((async()=>{
+    const cached=await caches.match(event.request);
+    if(cached)return cached;
+    try{
+      const response=await fetch(event.request);
+      if(response.ok&&response.type==='basic'){
+        const cache=await caches.open(VERSION);
+        await cache.put(event.request,response.clone());
+      }
+      return response;
+    }catch(error){
+      return new Response('',{status:503,statusText:'Offline'});
+    }
+  })());
+});

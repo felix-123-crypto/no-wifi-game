@@ -60,8 +60,15 @@
     wallet.innerHTML = `<span aria-hidden="true">★</span><b data-arcade-points>${balance().toLocaleString()}</b><em>PTS · SHOP</em>`;
     host.append(wallet);
   };
+  const registerOfflineWorker = () => {
+    if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
+    navigator.serviceWorker.register('/sw.js', {updateViaCache:'none'})
+      .then(registration => registration.update())
+      .catch(() => {});
+  };
   const boot = () => { addThemeStyles(); document.body.classList.toggle('retro-theme', retroActive()); addWallet(); updateUI(); };
   window.RecessPoints = { balance, award, spend, ownsRetro, buyRetro, retroActive, setRetro, retroCost:RETRO_COST, keys:{BALANCE_KEY,RETRO_OWNED_KEY,THEME_KEY} };
   addEventListener('storage', event => { if ([BALANCE_KEY,RETRO_OWNED_KEY,THEME_KEY].includes(event.key)) boot(); });
   document.readyState === 'loading' ? addEventListener('DOMContentLoaded', boot, {once:true}) : boot();
+  registerOfflineWorker();
 })();

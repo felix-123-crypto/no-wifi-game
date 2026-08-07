@@ -15,4 +15,3 @@ document.querySelector('#clear-filters').addEventListener('click',()=>{checks.fo
 const status=document.querySelector('#network-status');
 function showNetwork(){status.innerHTML=`<i></i> ${navigator.onLine?'ONLINE · OFFLINE READY':'OFFLINE · READY TO PLAY'}`;status.classList.toggle('is-offline',!navigator.onLine)}
 addEventListener('online',showNetwork);addEventListener('offline',showNetwork);showNetwork();
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js');

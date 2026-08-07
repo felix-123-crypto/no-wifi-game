@@ -367,8 +367,12 @@
     game.home.forEach((mate,index)=>{
       if(index===game.controlled)return;
       const closest=nearestPlayer(game.home,game.ball.x,game.ball.y)===mate;
-      const tx=closest?game.ball.x:mate.homeX+(game.ball.x-480)*.14,ty=closest?game.ball.y:mate.homeY+(game.ball.y-270)*.12;
-      moveAI(mate,tx,ty,dt,128);
+      // Every teammate keeps moving: the closest player presses the ball while
+      // the others run into passing lanes instead of freezing at home positions.
+      const laneX=index===1?-76:-42,laneY=index===1?-72:72;
+      const tx=closest?game.ball.x-18:Math.max(field.left+mate.r,Math.min(field.right-mate.r,game.ball.x+laneX));
+      const ty=closest?game.ball.y:Math.max(field.top+mate.r,Math.min(field.bottom-mate.r,game.ball.y+laneY));
+      moveAI(mate,tx,ty,dt,closest?148:132);
     });
   }
   function moveAI(player,tx,ty,dt,speed){
@@ -380,7 +384,8 @@
       const tx=player===chaser?game.ball.x:player.homeX+(game.ball.x-480)*.18,ty=player===chaser?game.ball.y:player.homeY+(game.ball.y-270)*.15;
       moveAI(player,tx,ty,dt,142+(currentOpponent.ovr-70)*1.5);player.cooldown=Math.max(0,player.cooldown-dt);
       if(player===chaser&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<30&&player.cooldown<=0){
-        const angle=Math.atan2(270-player.y,field.left-player.x)+(Math.random()-.5)*.18;game.ball.vx=Math.cos(angle)*390;game.ball.vy=Math.sin(angle)*390;player.cooldown=.8;game.opponentKick++;tone(170,.04,'square');
+        const targetX=field.left+92,targetY=Math.max(field.goalTop+32,Math.min(field.goalBottom-32,270+(Math.random()-.5)*70));
+        const angle=Math.atan2(targetY-player.y,targetX-player.x)+(Math.random()-.5)*.12;game.ball.vx=Math.cos(angle)*390;game.ball.vy=Math.sin(angle)*390;player.cooldown=.8;game.opponentKick++;tone(170,.04,'square');
       }
     });
   }
@@ -417,6 +422,10 @@
       const bounceSpeed=value=>Math.max(55,Math.abs(value)*.72);
       if(ball.x>field.right-ball.r&&!inGoal){ball.x=field.right-ball.r;ball.vx=-bounceSpeed(ball.vx);}if(ball.x<field.left+ball.r&&!inGoal){ball.x=field.left+ball.r;ball.vx=bounceSpeed(ball.vx);}
       if(ball.y<field.top+ball.r){ball.y=field.top+ball.r;ball.vy=bounceSpeed(ball.vy);}if(ball.y>field.bottom-ball.r){ball.y=field.bottom-ball.r;ball.vy=-bounceSpeed(ball.vy);}
+      const nearLeft=ball.x<=field.left+ball.r+2,nearRight=ball.x>=field.right-ball.r-2,nearTop=ball.y<=field.top+ball.r+2,nearBottom=ball.y>=field.bottom-ball.r-2;
+      if(!inGoal&&(nearLeft||nearRight)&&(nearTop||nearBottom)&&(Math.hypot(ball.vx,ball.vy)<125)){
+        ball.vx=(nearLeft?1:-1)*165;ball.vy=(nearTop?1:-1)*135;
+      }
     }
   }
   function updateGame(dt){
@@ -433,6 +442,15 @@
     if(!game?.active)return;const player=game.home[game.controlled],ball=game.ball;if(Math.hypot(player.x-ball.x,player.y-ball.y)>50)return;
     let candidates=game.home.filter((_,index)=>index!==game.controlled);candidates.sort((a,b)=>b.x-a.x||Math.abs(a.y-ball.y)-Math.abs(b.y-ball.y));const target=candidates[0];if(!target)return;
     const dx=target.x-ball.x,dy=target.y-ball.y,d=Math.hypot(dx,dy)||1;ball.vx=dx/d*410;ball.vy=dy/d*410;game.controlled=target.index;game.passes++;tone(390,.05,'triangle');
+  }
+  function switchPlayer(){
+    if(!game?.active)return;
+    const current=game.home[game.controlled];
+    const candidates=game.home.filter(player=>player!==current).sort((a,b)=>Math.hypot(a.x-game.ball.x,a.y-game.ball.y)-Math.hypot(b.x-game.ball.x,b.y-game.ball.y));
+    if(!candidates.length)return;
+    game.controlled=candidates[0].index;
+    showMatchMessage(`PLAYER ${game.controlled+1}`);
+    tone(470,.05,'triangle');
   }
   function awardArcadePoints(amount,reason){
     if(!game||game.arcadePointsAwarded||!Number.isFinite(amount)||amount<=0)return;
@@ -533,11 +551,12 @@
       if(keyMap[event.code]){input[keyMap[event.code]]=true;event.preventDefault();}
       if(!event.repeat&&['KeyX','KeyK','Space'].includes(event.code)){actionShoot();event.preventDefault();}
       if(!event.repeat&&['KeyZ','KeyJ'].includes(event.code)){actionPass();event.preventDefault();}
+      if(!event.repeat&&event.code==='KeyC'){switchPlayer();event.preventDefault();}
     });
     window.addEventListener('keyup',event=>{if(keyMap[event.code]){input[keyMap[event.code]]=false;event.preventDefault();}});
     $$('.fz-control,.fz-action').forEach(button=>{
       const control=button.dataset.control;
-      button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture?.(event.pointerId);if(['up','down','left','right','sprint'].includes(control))input[control]=true;if(control==='shoot')actionShoot();if(control==='pass')actionPass();});
+      button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture?.(event.pointerId);if(['up','down','left','right','sprint'].includes(control))input[control]=true;if(control==='shoot')actionShoot();if(control==='pass')actionPass();if(control==='switch')switchPlayer();});
       const release=()=>{if(['up','down','left','right','sprint'].includes(control))input[control]=false;};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);
     });
     window.addEventListener('resize',()=>{if(!$('#match-screen').hidden)resizeCanvas();});

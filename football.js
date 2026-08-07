@@ -42,7 +42,9 @@
     {id:'emil-yilmaz',name:'Emil Yilmaz',nation:'Turkiye',pos:'RW',group:'ATT',rating:66,pace:78,shot:65,pass:67,def:33,color:'#be805d'},
     {id:'layla-jones',name:'Layla Jones',nation:'England',pos:'LB',group:'DEF',rating:65,pace:72,shot:43,pass:61,def:68,color:'#845840'},
     {id:'pablo-mendez',name:'Pablo Mendez',nation:'Spain',pos:'CAM',group:'MID',rating:63,pace:66,shot:62,pass:70,def:39,color:'#cb8c68'},
-    {id:'sana-ito',name:'Sana Ito',nation:'Japan',pos:'GK',group:'GK',rating:61,pace:43,shot:22,pass:55,def:66,color:'#e5ae87'}
+    {id:'sana-ito',name:'Sana Ito',nation:'Japan',pos:'GK',group:'GK',rating:61,pace:43,shot:22,pass:55,def:66,color:'#e5ae87'},
+    {id:'shop-speedster',name:'Kai Mensah',nation:'Ghana',pos:'RW',group:'ATT',rating:82,pace:96,shot:78,pass:76,def:35,color:'#5e3b2b'},
+    {id:'shop-playmaker',name:'Lina Okoye',nation:'Nigeria',pos:'CAM',group:'MID',rating:83,pace:77,shot:75,pass:94,def:48,color:'#7a4a32'}
   ];
   const playerMap = new Map(players.map(player => [player.id, player]));
   const initialIds = players.slice(0, 15).map(player => player.id);
@@ -63,9 +65,9 @@
   };
 
   const defaults = {
-    version:1,coins:4200,energy:12,maxEnergy:15,tokens:18,xp:540,rankPoints:320,
+    version:1,coins:4200,energy:12,maxEnergy:15,upgradeTokens:18,tokens:18,xp:540,rankPoints:320,country:'Mali',
     wins:0,draws:0,losses:0,skillBest:0,cupWins:0,cups:0,formation:'4-3-3',squad:{},
-    owned:Object.fromEntries(initialIds.map(id => [id,{level:1,shards:0}])),
+    owned:Object.fromEntries(initialIds.map(id => [id,{level:1}])),
     lastDaily:'',lastEnergyAt:Date.now(),sound:true,vibration:true,totalPacks:0,totalGoals:0
   };
 
@@ -88,11 +90,16 @@
       const loaded = {...clone(defaults),...raw};
       loaded.owned = {...clone(defaults.owned),...(raw.owned || {})};
       loaded.squad = raw.squad || {};
+      const legacyShards = raw.upgradeTokens == null ? Object.values(loaded.owned).reduce((sum,entry)=>sum + Math.max(0,Math.floor(Number(entry?.shards)||0)),0) : 0;
+      loaded.upgradeTokens = Math.max(0,Math.floor(Number(raw.upgradeTokens ?? raw.tokens ?? defaults.upgradeTokens)||0)) + legacyShards;
+      loaded.tokens = loaded.upgradeTokens;
+      Object.values(loaded.owned).forEach(entry=>{if(entry && 'shards' in entry) delete entry.shards;});
+      ['shop-speedster','shop-playmaker'].forEach(id=>{if(localStorage.getItem(`recess-shop-item-${id.replace('shop-','')}`)==='1')loaded.owned[id] ||= {level:1};});
       return loaded;
     }catch(error){ return clone(defaults); }
   }
   function saveState(){
-    try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); }catch(error){ /* Storage can be unavailable in private mode. */ }
+    try{ state.upgradeTokens=Math.max(0,Math.floor(Number(state.upgradeTokens ?? state.tokens)||0));state.tokens=state.upgradeTokens;localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); }catch(error){ /* Storage can be unavailable in private mode. */ }
   }
   function applyEnergyRegen(){
     const now = Date.now();
@@ -179,7 +186,8 @@
   function vibrate(pattern=20){ if(state.vibration && navigator.vibrate) navigator.vibrate(pattern); }
 
   function renderWallet(){
-    $('#coins-value').textContent=nf.format(state.coins);$('#energy-value').textContent=state.energy;
+    $('#upgrade-tokens-value').textContent=nf.format(state.upgradeTokens);
+    $('#coins-value').textContent=nf.format(state.coins);$('#energy-value').textContent='∞';
     $('#club-level').textContent=clubLevel();
   }
   function renderHome(){
@@ -222,7 +230,7 @@
     selectedSlot=null;saveState();renderAll();tone(560,.07,'triangle');
   }
   function playerCardHTML(player){
-    return `<button class="fz-player-card ${rarity(player)}" data-player-card="${player.id}"><span class="fz-card-top"><span><b class="fz-card-rating">${ratingOf(player.id)}</b><small class="fz-card-pos">${player.pos}</small></span><small class="fz-card-level">LV ${levelOf(player.id)}</small></span><span class="fz-card-avatar" style="background:${player.color}">${initials(player.name)}</span><h3>${player.name}</h3><p>${player.nation} • ${state.owned[player.id].shards||0} TOKENS</p><span class="fz-card-stats"><span><b>${statOf(player.id,'pace')}</b>PAC</span><span><b>${statOf(player.id,'shot')}</b>SHT</span><span><b>${statOf(player.id,'pass')}</b>PAS</span></span></button>`;
+    return `<button class="fz-player-card ${rarity(player)}" data-player-card="${player.id}"><span class="fz-card-top"><span><b class="fz-card-rating">${ratingOf(player.id)}</b><small class="fz-card-pos">${player.pos}</small></span><small class="fz-card-level">LV ${levelOf(player.id)}</small></span><span class="fz-card-avatar" style="background:${player.color}">${initials(player.name)}</span><h3>${player.name}</h3><p>${player.nation} • SPECIAL TOKEN UPGRADES</p><span class="fz-card-stats"><span><b>${statOf(player.id,'pace')}</b>PAC</span><span><b>${statOf(player.id,'shot')}</b>SHT</span><span><b>${statOf(player.id,'pass')}</b>PAS</span></span></button>`;
   }
   function renderCollection(){
     let list=getOwnedPlayers().filter(player=>collectionFilter==='ALL'||player.group===collectionFilter);
@@ -255,11 +263,15 @@
     if(name==='squad') renderSquad();
   }
 
+  const countryTeams={
+    Mali:{short:'MALI',primary:'#23a36c',accent:'#ffd35b'},Brazil:{short:'BRAZIL',primary:'#f4c542',accent:'#1b9b63'},Japan:{short:'JAPAN',primary:'#f04d5e',accent:'#ffffff'},Mexico:{short:'MEXICO',primary:'#159447',accent:'#f4d35e'},USA:{short:'USA',primary:'#3b82f6',accent:'#ef4444'},Canada:{short:'CANADA',primary:'#ef4444',accent:'#ffffff'},Nigeria:{short:'NIGERIA',primary:'#21a366',accent:'#ffffff'},Senegal:{short:'SENEGAL',primary:'#20a464',accent:'#f7d154'},Italy:{short:'ITALY',primary:'#2c79c7',accent:'#ffffff'},Uruguay:{short:'URUGUAY',primary:'#69c5e8',accent:'#ffffff'},Morocco:{short:'MOROCCO',primary:'#c4313d',accent:'#159447'},Australia:{short:'AUSTRALIA',primary:'#f0c941',accent:'#159447'},Spain:{short:'SPAIN',primary:'#e34c3c',accent:'#f6cc4c'},Ghana:{short:'GHANA',primary:'#f0c941',accent:'#159447'},Korea:{short:'KOREA',primary:'#ffffff',accent:'#e24b5b'},Germany:{short:'GERMANY',primary:'#252525',accent:'#e8c547'},England:{short:'ENGLAND',primary:'#ffffff',accent:'#4f73c9'},Colombia:{short:'COLOMBIA',primary:'#f3c33c',accent:'#2f66b3'}
+  };
+  const countryOptions=Object.keys(countryTeams);
   const modeDetails={
-    ranked:{kicker:'DIVISION FOOTBALL',title:'RANKED<br>ROAD',copy:'Face an adaptive opponent. Wins add rank points; losses cost a few. Your best squad starts automatically.',badges:['2 ⚡ ENTRY','+45 RP WIN','90 SECOND MATCH'],energy:2,time:90},
-    quick:{kicker:'ARCADE FOOTBALL',title:'QUICK<br>MATCH',copy:'A fast eleven-a-side match with instant coin rewards and no rank pressure. Great for learning the controls.',badges:['1 ⚡ ENTRY','COIN REWARDS','75 SECOND MATCH'],energy:1,time:75},
-    skill:{kicker:'TRAINING GROUND',title:'TARGET<br>RUSH',copy:'Dribble into range and strike the glowing targets. Chain hits quickly to set a new club record.',badges:['1 ⚡ ENTRY','NO OPPONENTS','45 SECOND CHALLENGE'],energy:1,time:45},
-    tournament:{kicker:'THREE-MATCH EVENT',title:'ZERO<br>CUP',copy:'Win three matches in a row to lift the Zero Cup. A loss resets the run, so every goal matters.',badges:['2 ⚡ ENTRY','3 WINS FOR TROPHY','75 SECOND MATCH'],energy:2,time:75}
+    ranked:{kicker:'DIVISION FOOTBALL',title:'RANKED<br>ROAD',copy:'Face an adaptive opponent. Wins add rank points; losses cost a few. Your best squad starts automatically.',badges:['FREE ENTRY','+45 RP WIN','90 SECOND MATCH'],energy:0,time:90},
+    quick:{kicker:'ARCADE FOOTBALL',title:'QUICK<br>MATCH',copy:'A fast eleven-a-side match with instant coin rewards and no rank pressure. Great for learning the controls.',badges:['FREE ENTRY','COIN REWARDS','75 SECOND MATCH'],energy:0,time:75},
+    skill:{kicker:'TRAINING GROUND',title:'TARGET<br>RUSH',copy:'Dribble into range and strike the glowing targets. Chain hits quickly to set a new club record.',badges:['FREE ENTRY','NO OPPONENTS','45 SECOND CHALLENGE'],energy:0,time:45},
+    tournament:{kicker:'THREE-MATCH EVENT',title:'ZERO<br>CUP',copy:'Win three matches in a row to lift the Zero Cup. A loss resets the run, so every goal matters.',badges:['FREE ENTRY','3 WINS FOR TROPHY','75 SECOND MATCH'],energy:0,time:75}
   };
   const opponentNames=['Northstar FC','Harbor City','Solar Athletic','Metro Rovers','Atlas Union','Pinecrest XI','Rivergate Club','Orchid Town'];
   let currentOpponent={name:'Northstar FC',ovr:71};
@@ -271,25 +283,26 @@
     $$('.fz-mode-btn').forEach(button=>button.classList.toggle('active',button.dataset.mode===selectedMode));
     $('#mode-kicker').textContent=detail.kicker;$('#mode-title').innerHTML=detail.title;$('#mode-copy').textContent=detail.copy;$('#mode-badges').innerHTML=detail.badges.map(badge=>`<span>${badge}</span>`).join('');
     $('#opponent-name').textContent=selectedMode==='skill'?'TRAINING WALL':currentOpponent.name.toUpperCase();$('#opponent-ovr').textContent=selectedMode==='skill'?`BEST ${nf.format(state.skillBest)} PTS`:`OVR ${currentOpponent.ovr}`;
-    const button=$('#start-match');button.textContent=state.energy>=detail.energy?'START MATCH →':`NEED ${detail.energy} ENERGY`;
+    $('#country-select').value=countryTeams[state.country]?state.country:'Mali';
+    const button=$('#start-match');button.textContent='START MATCH →';
   }
 
   function openUpgrade(playerId){
     const player=playerMap.get(playerId);if(!player)return;upgradePlayerId=playerId;
-    const level=levelOf(playerId),costCoins=250*level,costTokens=3+level*2,can=state.coins>=costCoins&&(state.tokens+(state.owned[playerId].shards||0))>=costTokens&&level<10;
-    $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(99,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.tokens+(state.owned[playerId].shards||0)} tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} TOKENS</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>`;
+    const level=levelOf(playerId),costCoins=250*level,costTokens=3+level*2,can=state.coins>=costCoins&&state.upgradeTokens>=costTokens&&level<10;
+    $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(99,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.upgradeTokens} special upgrade tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} ✦</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>`;
     $('#upgrade-modal').hidden=false;
   }
   function upgradePlayer(){
     const id=upgradePlayerId,level=levelOf(id);if(!id||level>=10)return;
-    const coinCost=250*level,tokenCost=3+level*2,personal=state.owned[id].shards||0,total=personal+state.tokens;
-    if(state.coins<coinCost||total<tokenCost){showToast('Not enough coins or upgrade tokens.');return;}
+    const coinCost=250*level,tokenCost=3+level*2;
+    if(state.coins<coinCost||state.upgradeTokens<tokenCost){showToast('Not enough coins or special upgrade tokens.');return;}
     state.coins-=coinCost;
-    const usedPersonal=Math.min(personal,tokenCost);state.owned[id].shards=personal-usedPersonal;state.tokens-=tokenCost-usedPersonal;state.owned[id].level=level+1;state.xp+=35;
+    state.upgradeTokens-=tokenCost;state.tokens=state.upgradeTokens;state.owned[id].level=level+1;state.xp+=35;
     saveState();renderAll();openUpgrade(id);tone(760,.16,'triangle');vibrate([25,30,25]);showToast(`${playerMap.get(id).name} reached level ${level+1}!`);
   }
 
-  const packTypes={academy:{count:1,min:60,currency:'coins',cost:600,label:'ACADEMY PACK'},pro:{count:2,min:70,currency:'coins',cost:1400,label:'PRO PACK'},elite:{count:3,min:78,currency:'coins',cost:2400,label:'ELITE PACK'},daily:{count:1,min:60,currency:null,cost:0,label:'DAILY CLUB DROP'}};
+  const packTypes={academy:{count:1,min:60,currency:'coins',cost:600,label:'ACADEMY PACK'},scout:{count:2,min:65,currency:'coins',cost:900,label:'SCOUT PACK'},pro:{count:2,min:70,currency:'coins',cost:1400,label:'PRO PACK'},premium:{count:2,min:74,currency:'coins',cost:1800,label:'PREMIUM PACK'},elite:{count:3,min:78,currency:'coins',cost:2400,label:'ELITE PACK'},legend:{count:4,min:84,currency:'coins',cost:4200,label:'LEGEND PACK'},daily:{count:1,min:60,currency:null,cost:0,label:'DAILY CLUB DROP'}};
   function weightedPlayer(minRating,index,pack){
     let pool=players.filter(player=>player.rating>=minRating);
     if(pack==='elite'&&index>0) pool=players.filter(player=>player.rating>=70);
@@ -304,7 +317,8 @@
     const results=[];
     for(let i=0;i<pack.count;i++){
       const min=i===0?pack.min:Math.max(60,pack.min-8),player=weightedPlayer(min,i,type),duplicate=Boolean(state.owned[player.id]),tokens=duplicate?(player.rating>=84?8:player.rating>=77?5:3):0;
-      if(duplicate) state.owned[player.id].shards=(state.owned[player.id].shards||0)+tokens; else state.owned[player.id]={level:1,shards:0};
+      if(duplicate) state.upgradeTokens+=tokens; else state.owned[player.id]={level:1};
+      state.tokens=state.upgradeTokens;
       results.push({player,duplicate,tokens});
     }
     state.totalPacks++;state.xp+=pack.count*15;pendingReveals=results;revealIndex=0;saveState();renderWallet();renderReveal(pack.label);$('#pack-modal').hidden=false;tone(260,.12,'sawtooth');
@@ -314,7 +328,7 @@
     const player=result.player,rare=rarity(player);
     $('#pack-progress').textContent=`${label||'NEW SIGNING'} • ${revealIndex+1} / ${pendingReveals.length}`;
     const wrap=$('#reveal-wrap');wrap.innerHTML=`<div class="fz-reveal-card"><div class="fz-reveal-inner ${rare}"><div class="fz-reveal-rating">${player.rating}</div><div class="fz-reveal-pos">${player.pos}</div><div class="fz-reveal-avatar" style="background:${player.color}">${initials(player.name)}</div><h3>${player.name}</h3><p>${player.nation} • ${rare.toUpperCase()}</p><div class="fz-reveal-stats"><span><b>${player.pace}</b>PAC</span><span><b>${player.shot}</b>SHT</span><span><b>${player.pass}</b>PAS</span></div></div></div>`;
-    $('#duplicate-copy').textContent=result.duplicate?`DUPLICATE CONVERTED TO ${result.tokens} ${player.name.toUpperCase()} TOKENS`:'NEW PLAYER ADDED TO YOUR CLUB';
+    $('#duplicate-copy').textContent=result.duplicate?`DUPLICATE → +${result.tokens} SPECIAL UPGRADE TOKENS`:'NEW PLAYER ADDED TO YOUR CLUB';
     $('#reveal-next').textContent=revealIndex===pendingReveals.length-1?'COLLECT ALL':'NEXT PLAYER';
     setTimeout(()=>{tone(rare==='elite'?880:rare==='rare'?680:520,.18,'triangle');vibrate(rare==='elite'?[30,40,50]:25);},450);
   }
@@ -334,19 +348,19 @@
     {key:'LCM',role:'CM',shirt:8,x:360,y:142},{key:'CM',role:'CM',shirt:6,x:360,y:270},{key:'RCM',role:'CM',shirt:10,x:360,y:398},
     {key:'LW',role:'LW',shirt:11,x:610,y:145},{key:'ST',role:'ST',shirt:9,x:700,y:270},{key:'RW',role:'RW',shirt:7,x:610,y:395}
   ];
-  function createPlayer(x,y,team,index,role,shirt){return{x,y,vx:0,vy:0,r:17,team,index,role,shirt,stamina:100,cooldown:0,homeX:x,homeY:y};}
+  function createPlayer(x,y,team,index,role,shirt){const maxStamina=localStorage.getItem('recess-shop-item-staminaBoost')==='1'?130:100;return{x,y,vx:0,vy:0,r:17,team,index,role,shirt,stamina:maxStamina,maxStamina,cooldown:0,homeX:x,homeY:y};}
   function createMatchTeam(team){
-    const ownedIds=Object.values(state.squad).filter(id=>state.owned[id]);
-    const usedIds=new Set();
+    const palette=countryTeams[state.country]||countryTeams.Mali;
+    const countryPool=players.filter(player=>player.nation===state.country);
     return matchSlots.map((slot,index)=>{
       const mirrored=team==='away';
       const x=mirrored?field.left+field.right-slot.x:slot.x;
-      const preferredId=team==='home'?state.squad[slot.key]:null;
-      const playerId=preferredId&&state.owned[preferredId]&&!usedIds.has(preferredId)?preferredId:(team==='home'?ownedIds.find(id=>!usedIds.has(id)):null);
-      if(playerId)usedIds.add(playerId);
       const player=createPlayer(x,slot.y,team,index,slot.role,slot.shirt);
-      player.playerId=playerId||'';
-      player.name=playerId?playerMap.get(playerId)?.name||'Player':team==='away'?'Rival player':'Player';
+      const template=countryPool[index%Math.max(1,countryPool.length)]||players[index%players.length];
+      player.playerId=team==='home'?`country-${state.country}-${index}`:'';
+      player.name=team==='home'?`${template.name.split(' ')[0]} ${slot.role} ${slot.shirt}`:'Rival player';
+      player.nation=team==='home'?state.country:'Rival';
+      player.jerseyColor=team==='home'?palette.primary:'#ff5873';player.accentColor=team==='home'?palette.accent:'#ffe2e8';
       return player;
     });
   }
@@ -358,8 +372,8 @@
       ball:{x:480,y:270,vx:0,vy:0,r:10},lastTouch:'home',target:{x:875,y:150+Math.random()*240,r:29,phase:0},shots:0,passes:0
     };
     game.spawnPositions={home:game.home.map(player=>({x:player.homeX,y:player.homeY})),away:game.away.map(player=>({x:player.homeX,y:player.homeY}))};
-    const starterIds=new Set(game.home.map(player=>player.playerId));
-    game.bench=Object.values(state.owned).filter(id=>!starterIds.has(id)).slice(0,5).map((id,index)=>{const clubPlayer=playerMap.get(id);return{playerId:id,name:clubPlayer?.name||'Reserve',role:clubPlayer?.pos||'SUB',shirt:12+index,stamina:100};});
+    const reserveRoles=['GK','CB','LB','CM','ST'];
+    game.bench=reserveRoles.map((role,index)=>({playerId:`country-${state.country}-reserve-${index}`,name:`${(countryTeams[state.country]||countryTeams.Mali).short} RESERVE ${index+1}`,role,shirt:12+index,stamina:100}));
     updateScoreUI();drawGame();
   }
   function updateScoreUI(){
@@ -368,9 +382,8 @@
   }
   function launchMatch(mode){
     applyEnergyRegen();const detail=modeDetails[mode];
-    if(state.energy<detail.energy){showToast(`You need ${detail.energy} energy. One energy returns every 15 minutes.`);renderAll();return;}
-    state.energy-=detail.energy;state.lastEnergyAt=Date.now();saveState();renderWallet();selectedMode=mode;pickOpponent();
-    $('#match-screen').hidden=false;document.body.style.overflow='hidden';$('#away-name').textContent=mode==='skill'?'TARGETS':currentOpponent.name.split(' ')[0].toUpperCase();
+    saveState();renderWallet();selectedMode=mode;pickOpponent();
+    $('#match-screen').hidden=false;document.body.style.overflow='hidden';$('#home-name').textContent=(countryTeams[state.country]||countryTeams.Mali).short;$('#away-name').textContent=mode==='skill'?'TARGETS':currentOpponent.name.split(' ')[0].toUpperCase();
     $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':'READY?';$('#match-overlay-copy').textContent=mode==='skill'?'Move into range and shoot at the glowing target. Score quickly to build a combo.':'Move with WASD or arrows. Switch with C, steal with V, pass with Z, shoot with X, and sprint with Shift.';$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START CHALLENGE':'KICK OFF';$('#match-begin').dataset.result='';
     setupGame(mode);resizeCanvas();lastFrame=performance.now();fpsFrames=0;fpsTime=lastFrame;cancelAnimationFrame(rafId);rafId=requestAnimationFrame(gameLoop);
   }
@@ -388,7 +401,7 @@
   function updateControlled(dt){
     const player=game.home[game.controlled];let dx=(input.right?1:0)-(input.left?1:0),dy=(input.down?1:0)-(input.up?1:0),length=Math.hypot(dx,dy)||1;dx/=length;dy/=length;
     const sprinting=input.sprint&&player.stamina>3;
-    const speed=sprinting?245:185,accel=12;player.vx+=(dx*speed-player.vx)*Math.min(1,dt*accel);player.vy+=(dy*speed-player.vy)*Math.min(1,dt*accel);player.x+=player.vx*dt;player.y+=player.vy*dt;clampPlayer(player);player.stamina=Math.max(0,Math.min(100,player.stamina+(sprinting?-30:17)*dt));
+    const speed=sprinting?245:185,accel=12;player.vx+=(dx*speed-player.vx)*Math.min(1,dt*accel);player.vy+=(dy*speed-player.vy)*Math.min(1,dt*accel);player.x+=player.vx*dt;player.y+=player.vy*dt;clampPlayer(player);player.stamina=Math.max(0,Math.min(player.maxStamina,player.stamina+(sprinting?-30:17)*dt));
     if(!game.owner&&game.stealCooldown<=0&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<34&&Math.hypot(game.ball.vx,game.ball.vy)<190){game.owner={team:'home',index:player.index};}
     game.home.forEach((mate,index)=>{
       if(index===game.controlled)return;
@@ -403,7 +416,7 @@
   }
   function moveAI(player,tx,ty,dt,speed){
     const dx=tx-player.x,dy=ty-player.y,d=Math.hypot(dx,dy)||1;player.vx+=(dx/d*speed-player.vx)*Math.min(1,dt*6);player.vy+=(dy/d*speed-player.vy)*Math.min(1,dt*6);if(d<12){player.vx*=.7;player.vy*=.7;}player.x+=player.vx*dt;player.y+=player.vy*dt;clampPlayer(player);
-    player.stamina=Math.max(0,Math.min(100,player.stamina+(speed>180?-16:10)*dt));
+    player.stamina=Math.max(0,Math.min(player.maxStamina,player.stamina+(speed>180?-16:10)*dt));
   }
   function updateOpponents(dt){
     game.stealCooldown=Math.max(0,game.stealCooldown-dt);
@@ -564,12 +577,12 @@
   function drawPlayer(player,controlled=false){
     ctx.save();ctx.translate(player.x,player.y);ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(4,15,21,8,0,0,Math.PI*2);ctx.fill();
     if(controlled){ctx.strokeStyle=varColor('--fz-lime','#b6f13b');ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.stroke();ctx.fillStyle=varColor('--fz-lime','#b6f13b');ctx.beginPath();ctx.moveTo(-6,-34);ctx.lineTo(6,-34);ctx.lineTo(0,-25);ctx.fill();}
-    const color=player.team==='home'?'#38e1cf':'#ff5873';
+    const color=player.jerseyColor||(player.team==='home'?'#38e1cf':'#ff5873');
     const body=ctx.createLinearGradient(-14,-10,14,14);body.addColorStop(0,'#ffffff');body.addColorStop(.16,color);body.addColorStop(.78,color);body.addColorStop(1,'#071126');
-    ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,4,15,18,0,0,Math.PI*2);ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle=player.team==='home'?'#d8fff9':'#ffe2e8';ctx.stroke();
+    ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,4,15,18,0,0,Math.PI*2);ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle=player.accentColor||(player.team==='home'?'#d8fff9':'#ffe2e8');ctx.stroke();
     const head=ctx.createRadialGradient(-4,-18,1,2,-14,10);head.addColorStop(0,'#ffe0bf');head.addColorStop(.65,'#c98360');head.addColorStop(1,'#4e2d2a');ctx.fillStyle=head;ctx.beginPath();ctx.arc(0,-17,9,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#071126';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(player.shirt,0,5);ctx.font='bold 8px Arial';ctx.fillStyle='white';ctx.fillText(player.role,0,-32);
-    if(controlled||player.stamina<88){ctx.fillStyle='rgba(5,12,26,.72)';ctx.fillRect(-18,24,36,4);ctx.fillStyle=player.stamina<25?'#ff5873':'#b6f13b';ctx.fillRect(-18,24,36*player.stamina/100,4);}
+    if(controlled||player.stamina<player.maxStamina*.88){ctx.fillStyle='rgba(5,12,26,.72)';ctx.fillRect(-18,24,36,4);ctx.fillStyle=player.stamina<player.maxStamina*.25?'#ff5873':'#b6f13b';ctx.fillRect(-18,24,36*Math.min(1,player.stamina/player.maxStamina),4);}
     ctx.restore();
   }
   function varColor(name,fallback){return getComputedStyle(document.documentElement).getPropertyValue(name).trim()||fallback;}
@@ -597,6 +610,7 @@
     $$('[data-view-jump]').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.viewJump)));
     $$('[data-go-mode]').forEach(button=>button.addEventListener('click',()=>{selectedMode=button.dataset.goMode;pickOpponent();setView('play');renderMode();}));
     $('#settings-open').addEventListener('click',()=>openModal('#settings-modal'));$('#controls-help').addEventListener('click',()=>openModal('#controls-modal'));
+    $('#country-select').addEventListener('change',event=>{state.country=countryTeams[event.target.value]?event.target.value:'Mali';saveState();renderMode();showToast(`${countryTeams[state.country].short} XI selected.`);});
     $$('[data-close-modal]').forEach(button=>button.addEventListener('click',()=>$('#'+button.dataset.closeModal).hidden=true));
     $$('.fz-modal').forEach(modal=>modal.addEventListener('click',event=>{if(event.target===modal&&modal.id!=='pack-modal')modal.hidden=true;}));
     $('#sound-toggle').addEventListener('click',event=>{state.sound=!state.sound;event.currentTarget.classList.toggle('on',state.sound);saveState();if(state.sound)tone(500);});

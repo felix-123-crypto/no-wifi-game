@@ -1381,7 +1381,7 @@
     overlayCopy.textContent = "This browser could not start the 3D world. Turn on hardware acceleration or try a current Chrome browser. " + error.message;
     enterButton.textContent = "BACK TO ARCADE";
     enterButton.disabled = false;
-    enterButton.onclick = function () { window.location.href = "index.html#catalog"; };
+    enterButton.onclick = function () { window.location.href = "/#catalog"; };
   }
 
   function boot() {

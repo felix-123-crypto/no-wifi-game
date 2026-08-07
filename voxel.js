@@ -763,7 +763,7 @@
     const eyeY = player.y + EYE_HEIGHT + player.bobAmount;
     const eye = [player.x, eyeY, player.z];
     const center = [eye[0] + look[0], eye[1] + look[1], eye[2] + look[2]];
-    const projection = perspectiveMatrix(Math.PI * 0.39, canvas.width / canvas.height, 0.08, 82);
+    const projection = perspectiveMatrix(Math.PI * 0.39, canvas.width / canvas.height, 0.08, 112);
     const view = lookAtMatrix(eye, center, [0, 1, 0]);
 
     gl.uniformMatrix4fv(locations.projection, false, projection);

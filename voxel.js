@@ -15,6 +15,20 @@
   const scoreEl = document.getElementById("score");
   const bestScoreEl = document.getElementById("best-score");
   const targetLabel = document.getElementById("target-label");
+  const healthValue = document.getElementById("health-value");
+  const hungerValue = document.getElementById("hunger-value");
+  const healthMeter = document.getElementById("health-meter");
+  const hungerMeter = document.getElementById("hunger-meter");
+  const survivalModeLabel = document.getElementById("survival-mode-label");
+  const mobCountEl = document.getElementById("mob-count");
+  const settingsButton = document.getElementById("settings-button");
+  const settingsPanel = document.getElementById("settings-panel");
+  const closeSettingsButton = document.getElementById("close-settings");
+  const survivalToggle = document.getElementById("survival-toggle");
+  const sensitivityRange = document.getElementById("sensitivity-range");
+  const sensitivityOutput = document.getElementById("sensitivity-output");
+  const distanceRange = document.getElementById("distance-range");
+  const distanceOutput = document.getElementById("distance-output");
   const questKicker = document.getElementById("quest-kicker");
   const questText = document.getElementById("quest-text");
   const hotbar = document.getElementById("hotbar");
@@ -27,9 +41,9 @@
   const touchMine = document.getElementById("touch-mine");
   const touchPlace = document.getElementById("touch-place");
 
-  const WORLD_X = 96;
-  const WORLD_Y = 36;
-  const WORLD_Z = 96;
+  const WORLD_X = 144;
+  const WORLD_Y = 40;
+  const WORLD_Z = 144;
   const CHUNK_SIZE = 16;
   const CHUNKS_X = WORLD_X / CHUNK_SIZE;
   const CHUNKS_Z = WORLD_Z / CHUNK_SIZE;
@@ -99,6 +113,9 @@
     bobAmount: 0
   };
 
+  const mobs = [];
+  const survival = { health: 100, hunger: 100, elapsed: 0, damageCooldown: 0 };
+
   const touchMove = { x: 0, y: 0 };
   const stats = { score: 0, mined: 0, placed: 0, crystals: 0 };
   const MINED_BLOCKS_PER_ARCADE_AWARD = 4;
@@ -106,6 +123,7 @@
   let gl = null;
   let program = null;
   let outlineBuffer = null;
+  let mobBuffer = null;
   let selectedHotbarIndex = 0;
   let currentTarget = null;
   let ready = false;
@@ -124,12 +142,18 @@
   let fpsWindowStart = performance.now();
   let measuredFps = 60;
   let qualityScale = 1;
+  let renderDistance = 4.3;
+  let lookSensitivity = 0.00225;
   let resizePending = true;
   let joystickPointerId = null;
   let lookPointerId = null;
   let lastLookX = 0;
   let lastLookY = 0;
   let draggingMouse = false;
+  let settingsOpen = false;
+  let settingsWasRunning = false;
+  let survivalMode = true;
+  let gameOver = false;
   let audioContext = null;
   let bestScore = loadBestScore();
 
@@ -175,6 +199,9 @@
     "  return fract((p.x + p.y) * p.z);",
     "}",
     "vec3 materialColor(float id, vec3 normal, vec3 position) {",
+    "  if (id > 12.5) return vec3(0.45, 0.90, 0.48);",
+    "  if (id > 11.5) return vec3(0.67, 0.33, 0.93);",
+    "  if (id > 10.5) return vec3(0.95, 0.32, 0.25);",
     "  if (id > 9.5) return vec3(1.0, 0.84, 0.10);",
     "  if (id < 1.5) {",
     "    if (normal.y > 0.5) return vec3(0.27, 0.67, 0.24);",
@@ -337,6 +364,31 @@
 
     growTrees(centerX, centerZ);
     buildSpawnBeacon(centerX, centerZ, spawnHeight);
+    spawnMobs(centerX, centerZ);
+  }
+
+  function spawnMobs(centerX, centerZ) {
+    mobs.length = 0;
+    for (let i = 0; i < 10; i += 1) {
+      const angle = (i / 10) * Math.PI * 2 + hash2(i * 17, i * 23) * 0.45;
+      const radius = 18 + (i % 4) * 9 + hash2(i * 31, i * 7) * 8;
+      const x = clamp(Math.floor(centerX + Math.cos(angle) * radius), 3, WORLD_X - 4);
+      const z = clamp(Math.floor(centerZ + Math.sin(angle) * radius), 3, WORLD_Z - 4);
+      const groundY = heightMap[indexOfHeight(x, z)];
+      if (Math.abs(groundY - heightMap[indexOfHeight(centerX, centerZ)]) > 8) continue;
+      mobs.push({
+        x: x + 0.5,
+        y: groundY + 1,
+        z: z + 0.5,
+        dirX: Math.cos(angle + Math.PI * 0.5),
+        dirZ: Math.sin(angle + Math.PI * 0.5),
+        speed: 0.65 + (i % 3) * 0.16,
+        phase: i * 1.7,
+        turnTimer: 1.2 + i * 0.18,
+        kind: i % 3,
+        hitCooldown: 0
+      });
+    }
   }
 
   function growTrees(centerX, centerZ) {
@@ -450,6 +502,7 @@
     gl.frontFace(gl.CCW);
 
     outlineBuffer = gl.createBuffer();
+    mobBuffer = gl.createBuffer();
   }
 
   function initializeChunks() {
@@ -473,6 +526,24 @@
 
   function pushVertex(vertices, x, y, z, normal, material, shade) {
     vertices.push(x, y, z, normal[0], normal[1], normal[2], material, shade);
+  }
+
+  function appendBox(vertices, x, y, z, width, height, depth, material) {
+    for (let faceIndex = 0; faceIndex < FACE_DEFINITIONS.length; faceIndex += 1) {
+      const face = FACE_DEFINITIONS[faceIndex];
+      for (let triangleIndex = 0; triangleIndex < TRIANGLE_ORDER.length; triangleIndex += 1) {
+        const corner = face.corners[TRIANGLE_ORDER[triangleIndex]];
+        pushVertex(
+          vertices,
+          x + corner[0] * width,
+          y + corner[1] * height,
+          z + corner[2] * depth,
+          face.normal,
+          material,
+          face.shade * 1.08
+        );
+      }
+    }
   }
 
   function buildChunkMesh(chunk) {
@@ -655,6 +726,29 @@
     resizePending = false;
   }
 
+  function buildMobMesh() {
+    if (!mobBuffer || !mobs.length) return 0;
+    const vertices = [];
+    for (let i = 0; i < mobs.length; i += 1) {
+      const mob = mobs[i];
+      const distance = Math.hypot(mob.x - player.x, mob.z - player.z);
+      if (distance > renderDistance * CHUNK_SIZE + 8) continue;
+      const bob = Math.sin(mob.phase) * 0.035;
+      const bodyMaterial = mob.kind === 0 ? 10 : (mob.kind === 1 ? 11 : 12);
+      appendBox(vertices, mob.x - 0.36, mob.y + bob, mob.z - 0.36, 0.72, 0.92, 0.72, bodyMaterial);
+      appendBox(vertices, mob.x - 0.29, mob.y + 0.9 + bob, mob.z - 0.29, 0.58, 0.5, 0.58, bodyMaterial);
+      appendBox(vertices, mob.x - 0.28, mob.y - 0.12 + bob, mob.z - 0.28, 0.2, 0.28, 0.2, bodyMaterial);
+      appendBox(vertices, mob.x + 0.08, mob.y - 0.12 + bob, mob.z - 0.28, 0.2, 0.28, 0.2, bodyMaterial);
+      if (mob.kind === 0) {
+        appendBox(vertices, mob.x - 0.22, mob.y + 1.06 + bob, mob.z - 0.34, 0.11, 0.11, 0.08, 9);
+        appendBox(vertices, mob.x + 0.11, mob.y + 1.06 + bob, mob.z - 0.34, 0.11, 0.11, 0.08, 9);
+      }
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, mobBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+    return vertices.length / 8;
+  }
+
   function renderWorld() {
     if (!gl || !ready) return;
     resizeCanvasIfNeeded();
@@ -682,11 +776,18 @@
     const playerChunkZ = player.z / CHUNK_SIZE;
     for (let i = 0; i < chunks.length; i += 1) {
       const chunk = chunks[i];
-      if (Math.abs(chunk.cx + 0.5 - playerChunkX) > 4.3 || Math.abs(chunk.cz + 0.5 - playerChunkZ) > 4.3) continue;
+      if (Math.abs(chunk.cx + 0.5 - playerChunkX) > renderDistance || Math.abs(chunk.cz + 0.5 - playerChunkZ) > renderDistance) continue;
       if (chunk.count === 0) continue;
       gl.bindBuffer(gl.ARRAY_BUFFER, chunk.buffer);
       configureVertexAttributes();
       gl.drawArrays(gl.TRIANGLES, 0, chunk.count);
+    }
+
+    const mobVertexCount = buildMobMesh();
+    if (mobVertexCount) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, mobBuffer);
+      configureVertexAttributes();
+      gl.drawArrays(gl.TRIANGLES, 0, mobVertexCount);
     }
 
     if (currentTarget) drawTargetOutline(currentTarget);
@@ -761,6 +862,75 @@
     if (axis === "y") {
       if (amount < 0) player.grounded = true;
       player.velocityY = 0;
+    }
+  }
+
+  function mobCanWalk(x, z, mob) {
+    const blockX = Math.floor(x);
+    const blockZ = Math.floor(z);
+    if (blockX < 1 || blockX >= WORLD_X - 1 || blockZ < 1 || blockZ >= WORLD_Z - 1) return false;
+    const groundY = heightMap[indexOfHeight(blockX, blockZ)];
+    const oldGroundY = heightMap[indexOfHeight(Math.floor(mob.x), Math.floor(mob.z))];
+    if (Math.abs(groundY - oldGroundY) > 1) return false;
+    return getBlock(blockX, groundY + 1, blockZ) === 0 && getBlock(blockX, groundY + 2, blockZ) === 0;
+  }
+
+  function updateMobs(deltaTime) {
+    if (!mobs.length) return;
+    survival.damageCooldown = Math.max(0, survival.damageCooldown - deltaTime);
+    for (let i = 0; i < mobs.length; i += 1) {
+      const mob = mobs[i];
+      mob.phase += deltaTime * 5;
+      mob.turnTimer -= deltaTime;
+      if (mob.turnTimer <= 0) {
+        const turn = (hash2(Math.floor(worldElapsed * 3) + i * 13, i * 19) - 0.5) * 1.8;
+        const cos = Math.cos(turn);
+        const sin = Math.sin(turn);
+        const nextDirX = mob.dirX * cos - mob.dirZ * sin;
+        mob.dirZ = mob.dirX * sin + mob.dirZ * cos;
+        mob.dirX = nextDirX;
+        mob.turnTimer = 1.6 + hash2(i * 7, Math.floor(worldElapsed)) * 2.4;
+      }
+      const nextX = mob.x + mob.dirX * mob.speed * deltaTime;
+      const nextZ = mob.z + mob.dirZ * mob.speed * deltaTime;
+      if (mobCanWalk(nextX, nextZ, mob)) {
+        mob.x = nextX;
+        mob.z = nextZ;
+      } else {
+        mob.dirX *= -1;
+        mob.dirZ *= -1;
+        mob.turnTimer = 0.2;
+      }
+      const blockX = clamp(Math.floor(mob.x), 0, WORLD_X - 1);
+      const blockZ = clamp(Math.floor(mob.z), 0, WORLD_Z - 1);
+      mob.y = heightMap[indexOfHeight(blockX, blockZ)] + 1;
+
+      const distanceToPlayer = Math.hypot(mob.x - player.x, mob.z - player.z);
+      if (survivalMode && distanceToPlayer < 1.45 && survival.damageCooldown <= 0) {
+        survival.health = Math.max(0, survival.health - 8);
+        survival.damageCooldown = 0.85;
+        showToast("A roaming mob hit you! Find shelter.");
+        playTone(100, 0.08, "sawtooth", 0.018);
+      }
+    }
+  }
+
+  function updateSurvival(deltaTime) {
+    if (!survivalMode || gameOver) return;
+    survival.elapsed += deltaTime;
+    survival.hunger = Math.max(0, survival.hunger - deltaTime * 0.42);
+    if (survival.hunger <= 0) survival.health = Math.max(0, survival.health - deltaTime * 1.25);
+    if (survival.health <= 0) {
+      gameOver = true;
+      running = false;
+      resetInput();
+      if (document.pointerLockElement === canvas && document.exitPointerLock) document.exitPointerLock();
+      overlayKicker.textContent = "SURVIVAL RUN OVER";
+      overlayTitle.innerHTML = "FRONTIER<br><span>FALLEN</span>";
+      overlayCopy.textContent = "The mobs and the wilderness won this round. Restart to return to the trailhead with a full health bar.";
+      enterButton.textContent = "RESTART SURVIVAL";
+      overlay.hidden = false;
+      playTone(72, 0.18, "sawtooth", 0.022);
     }
   }
 
@@ -1025,6 +1195,49 @@
     }
   }
 
+  function loadWorldSettings() {
+    try {
+      const savedSurvival = window.localStorage.getItem("recess-voxel-survival");
+      if (savedSurvival !== null) survivalMode = savedSurvival !== "false";
+      const savedSensitivity = Number(window.localStorage.getItem("recess-voxel-sensitivity") || 10);
+      const savedDistance = Number(window.localStorage.getItem("recess-voxel-distance") || 4);
+      sensitivityRange.value = String(clamp(savedSensitivity, 1, 20));
+      distanceRange.value = String(clamp(savedDistance, 2, 6));
+    } catch (error) {
+      // Defaults are fine when storage is restricted.
+    }
+    survivalToggle.checked = survivalMode;
+    lookSensitivity = Number(sensitivityRange.value) * 0.000225;
+    renderDistance = Number(distanceRange.value) + 0.3;
+    sensitivityOutput.textContent = sensitivityRange.value;
+    distanceOutput.textContent = distanceRange.value;
+  }
+
+  function saveWorldSettings() {
+    try {
+      window.localStorage.setItem("recess-voxel-survival", String(survivalMode));
+      window.localStorage.setItem("recess-voxel-sensitivity", sensitivityRange.value);
+      window.localStorage.setItem("recess-voxel-distance", distanceRange.value);
+    } catch (error) {
+      // Settings remain active for this session when storage is restricted.
+    }
+  }
+
+  function setSettingsOpen(open) {
+    settingsOpen = open;
+    settingsPanel.hidden = !open;
+    if (open) {
+      settingsWasRunning = running;
+      running = false;
+      resetInput();
+      if (document.pointerLockElement === canvas && document.exitPointerLock) document.exitPointerLock();
+    } else if (settingsWasRunning && hasEntered && !gameOver) {
+      running = true;
+      overlay.hidden = true;
+      lastFrameTime = performance.now();
+    }
+  }
+
   function initializeAudio() {
     if (audioContext) return;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -1076,10 +1289,22 @@
     player.grounded = false;
     player.yaw = 0;
     player.pitch = -0.08;
+    if (showMessage && survivalMode) {
+      survival.health = 100;
+      survival.hunger = Math.max(survival.hunger, 70);
+    }
     if (showMessage) showToast("Back at the trailhead.");
   }
 
   function updateHud(now) {
+    const health = Math.round(survival.health);
+    const hunger = Math.round(survival.hunger);
+    healthValue.textContent = String(health);
+    hungerValue.textContent = String(hunger);
+    healthMeter.style.width = health + "%";
+    hungerMeter.style.width = hunger + "%";
+    survivalModeLabel.textContent = survivalMode ? "SURVIVAL MODE" : "CREATIVE MODE";
+    mobCountEl.textContent = String(mobs.length);
     if (now - lastHudUpdate > 100) {
       coordinatesEl.textContent = "X " + Math.floor(player.x) + " / Y " + Math.floor(player.y) + " / Z " + Math.floor(player.z);
       lastHudUpdate = now;
@@ -1123,6 +1348,8 @@
     if (running) {
       worldElapsed += deltaTime;
       updatePlayer(deltaTime);
+      updateMobs(deltaTime);
+      updateSurvival(deltaTime);
       updateTarget();
     }
     updateHud(now);
@@ -1153,6 +1380,13 @@
   function beginPlaying() {
     if (!ready) return;
     initializeAudio();
+    if (gameOver) {
+      gameOver = false;
+      survival.health = 100;
+      survival.hunger = 100;
+      survival.elapsed = 0;
+      respawnPlayer(false);
+    }
     hasEntered = true;
     resetInput();
     lastFrameTime = performance.now();
@@ -1195,6 +1429,36 @@
   }
 
   function setupControls() {
+    settingsButton.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      setSettingsOpen(!settingsOpen);
+    });
+    closeSettingsButton.addEventListener("click", function () {
+      setSettingsOpen(false);
+    });
+    survivalToggle.addEventListener("change", function () {
+      survivalMode = survivalToggle.checked;
+      if (survivalMode) {
+        survival.health = 100;
+        survival.hunger = 100;
+        showToast("Survival mode enabled. Watch your hunger.");
+      } else {
+        showToast("Creative mode enabled. Mobs cannot hurt you.");
+      }
+      saveWorldSettings();
+    });
+    sensitivityRange.addEventListener("input", function () {
+      lookSensitivity = Number(sensitivityRange.value) * 0.000225;
+      sensitivityOutput.textContent = sensitivityRange.value;
+      saveWorldSettings();
+    });
+    distanceRange.addEventListener("input", function () {
+      renderDistance = Number(distanceRange.value) + 0.3;
+      distanceOutput.textContent = distanceRange.value;
+      saveWorldSettings();
+    });
+
     enterButton.addEventListener("pointerdown", function (event) {
       if (event.pointerType === "touch") touchMode = true;
       else if (event.pointerType === "mouse") touchMode = false;
@@ -1220,9 +1484,9 @@
     document.addEventListener("mousemove", function (event) {
       if (!running) return;
       if (document.pointerLockElement === canvas) {
-        updateLook(event.movementX, event.movementY, 0.00225);
+        updateLook(event.movementX, event.movementY, lookSensitivity);
       } else if (draggingMouse) {
-        updateLook(event.movementX, event.movementY, 0.0031);
+        updateLook(event.movementX, event.movementY, lookSensitivity * 1.35);
       }
     });
 
@@ -1235,7 +1499,7 @@
         running = true;
         overlay.hidden = true;
         lastFrameTime = performance.now();
-      } else if (hasEntered && !document.hidden) {
+      } else if (hasEntered && !document.hidden && !settingsOpen && !gameOver) {
         showPauseOverlay();
       }
     });
@@ -1347,7 +1611,7 @@
       if (document.hidden) {
         running = false;
         resetInput();
-      } else if (hasEntered && touchMode) {
+      } else if (hasEntered && touchMode && !settingsOpen && !gameOver) {
         running = true;
         overlay.hidden = true;
         lastFrameTime = performance.now();
@@ -1386,10 +1650,11 @@
 
   function boot() {
     try {
+      loadWorldSettings();
       overlayKicker.textContent = "CREATING TERRAIN AND CAVES";
       initializeRenderer();
       generateWorld();
-      overlayKicker.textContent = "MESHING 36 WORLD CHUNKS";
+      overlayKicker.textContent = "MESHING " + (CHUNKS_X * CHUNKS_Z) + " WORLD CHUNKS";
       initializeChunks();
       respawnPlayer(false);
       selectHotbar(0);
@@ -1400,7 +1665,7 @@
       ready = true;
       enterButton.disabled = false;
       enterButton.textContent = hasTouchPointer ? "TAP OR CLICK TO EXPLORE" : "ENTER WORLD";
-      overlayKicker.textContent = "96 x 96 WORLD READY";
+      overlayKicker.textContent = WORLD_X + " x " + WORLD_Z + " WORLD READY";
       if (isCoarsePointer) {
         controlLine.innerHTML = "<span>LEFT PAD TO MOVE</span><span>DRAG TO LOOK</span><span>BUTTONS TO BUILD</span>";
       }

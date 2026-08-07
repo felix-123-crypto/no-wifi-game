@@ -78,6 +78,77 @@
     .world-stats { left: 16px; }
     .performance-stats { right: 16px; text-align: right; }
 
+    .survival-panel {
+      top: 94px;
+      left: 16px;
+      min-width: 166px;
+    }
+
+    .survival-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 28px;
+      align-items: center;
+      gap: 7px;
+      margin-top: 5px;
+      font-size: 10px;
+      letter-spacing: .7px;
+    }
+
+    .survival-meter {
+      height: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .8);
+      background: rgba(10, 22, 38, .72);
+    }
+
+    .survival-meter i {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #ff5a4e;
+      transition: width .18s, background .18s;
+    }
+
+    .survival-row.hunger .survival-meter i { background: #ffd23f; }
+
+    .settings-button {
+      position: absolute;
+      top: 94px;
+      right: 16px;
+      z-index: 6;
+      padding: 8px 10px;
+      border: 2px solid white;
+      background: rgba(20, 33, 61, .78);
+      color: white;
+      box-shadow: 3px 3px 0 rgba(20, 33, 61, .5);
+      cursor: pointer;
+      pointer-events: auto;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    .settings-panel {
+      position: absolute;
+      top: 128px;
+      right: 16px;
+      z-index: 14;
+      width: min(310px, calc(100vw - 32px));
+      padding: 18px;
+      border: 3px solid var(--ink);
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 7px 7px 0 rgba(20, 33, 61, .55);
+    }
+
+    .settings-panel[hidden] { display: none; }
+    .settings-panel h2 { margin: 0 0 12px; font-size: 20px; }
+    .settings-panel p { margin: 0 0 13px; color: #536078; font: 400 13px Georgia, serif; line-height: 1.35; }
+    .settings-panel label { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0; font-size: 12px; }
+    .settings-panel input[type="range"] { width: 130px; accent-color: var(--red); }
+    .settings-panel input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--red); }
+    .settings-panel output { min-width: 34px; text-align: right; font-weight: 700; }
+    .settings-panel button { width: 100%; margin-top: 8px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); cursor: pointer; }
+
     .hud-label {
       display: block;
       margin-bottom: 3px;
@@ -337,6 +408,9 @@
       .desktop-hint { display: none; }
       .performance-stats { top: 10px; right: 10px; }
       .world-stats { top: 10px; left: 10px; }
+      .survival-panel { top: 72px; left: 10px; min-width: 150px; }
+      .settings-button { top: 72px; right: 10px; }
+      .settings-panel { top: 108px; right: 10px; }
       .quest-card { top: 72px; min-width: 230px; padding: 7px 10px; }
       .held-block { display: none; }
       .score-pill { top: 68px; right: 10px; bottom: auto; }
@@ -425,6 +499,9 @@
       .performance-stats .hud-label, .performance-stats .hud-value:last-child { display: none; }
       .quest-card { top: 58px; }
       .score-pill { top: 57px; }
+      .survival-panel { top: 105px; }
+      .settings-button { top: 105px; }
+      .settings-panel { top: 141px; }
       .control-line { flex-direction: column; gap: 4px; }
       .start-card { box-shadow: 8px 8px 0 var(--red); }
     }
@@ -451,6 +528,12 @@
         <span class="hud-value" id="coordinates">X 48 / Y 18 / Z 48</span>
       </div>
 
+      <div class="hud-panel survival-panel" aria-label="Survival status">
+        <span class="hud-label" id="survival-mode-label">SURVIVAL MODE</span>
+        <div class="survival-row"><span>HEALTH</span><span class="survival-meter"><i id="health-meter"></i></span><strong id="health-value">100</strong></div>
+        <div class="survival-row hunger"><span>HUNGER</span><span class="survival-meter"><i id="hunger-meter"></i></span><strong id="hunger-value">100</strong></div>
+      </div>
+
       <div class="quest-card">
         <small id="quest-kicker">TRAILHEAD QUEST</small>
         <strong id="quest-text">Mine 5 blocks to scout the frontier</strong>
@@ -459,8 +542,11 @@
       <div class="hud-panel performance-stats">
         <span class="hud-label">WORLD STATUS</span>
         <span class="hud-value"><span id="fps">60</span> FPS</span><br>
-        <span class="hud-value" id="world-clock">DAY 1 - MORNING</span>
+        <span class="hud-value" id="world-clock">DAY 1 - MORNING</span><br>
+        <span class="hud-value"><span id="mob-count">0</span> MOBS</span>
       </div>
+
+      <button class="settings-button" id="settings-button" type="button">SETTINGS</button>
 
       <div class="crosshair" aria-hidden="true"></div>
       <div class="target-label" id="target-label">Nothing in reach</div>
@@ -493,11 +579,20 @@
       </div>
     </div>
 
+    <section class="settings-panel" id="settings-panel" hidden aria-label="World settings">
+      <h2>WORLD SETTINGS</h2>
+      <p>Adjust this offline world without creating an account.</p>
+      <label><span>Survival mode</span><input id="survival-toggle" type="checkbox" checked></label>
+      <label><span>Look sensitivity</span><span><input id="sensitivity-range" type="range" min="1" max="20" value="10"><output id="sensitivity-output">10</output></span></label>
+      <label><span>Render distance</span><span><input id="distance-range" type="range" min="2" max="6" value="4"><output id="distance-output">4</output></span></label>
+      <button id="close-settings" type="button">DONE</button>
+    </section>
+
     <div class="world-overlay" id="world-overlay">
       <div class="start-card">
-        <p class="eyebrow" id="overlay-kicker">GENERATING 96 x 96 WORLD</p>
+        <p class="eyebrow" id="overlay-kicker">GENERATING 144 x 144 WORLD</p>
         <h1 id="overlay-title">VOXEL<br><span>FRONTIER</span></h1>
-        <p id="overlay-copy">Explore a huge procedural landscape, uncover crystal veins, build a shelter, and chase a new high score. The whole world runs directly in your browser.</p>
+        <p id="overlay-copy">Explore a huge procedural landscape, survive roaming mobs, uncover crystal veins, build a shelter, and chase a new high score. The whole world runs directly in your browser.</p>
         <button type="button" id="enter-world" disabled>BUILDING WORLD...</button>
         <div class="control-line" id="control-line">
           <span>WASD TO MOVE</span><span>MOUSE TO LOOK</span><span>CLICK TO MINE</span>

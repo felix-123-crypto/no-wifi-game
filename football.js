@@ -411,8 +411,12 @@
     }else{
       const inGoal=ball.y>field.goalTop&&ball.y<field.goalBottom;
       if(ball.x>field.right+14&&inGoal){scoreGoal('home');return;}if(ball.x<field.left-14&&inGoal){scoreGoal('away');return;}
-      if(ball.x>field.right-ball.r&&!inGoal){ball.x=field.right-ball.r;ball.vx=-Math.abs(ball.vx)*.72;}if(ball.x<field.left+ball.r&&!inGoal){ball.x=field.left+ball.r;ball.vx=Math.abs(ball.vx)*.72;}
-      if(ball.y<field.top+ball.r){ball.y=field.top+ball.r;ball.vy=Math.abs(ball.vy)*.72;}if(ball.y>field.bottom-ball.r){ball.y=field.bottom-ball.r;ball.vy=-Math.abs(ball.vy)*.72;}
+      // Always give a wall bounce a small impulse. Without this floor, a ball
+      // that has slowed to zero in a corner reflects with `-Math.abs(0)` and
+      // remains pinned there forever.
+      const bounceSpeed=value=>Math.max(55,Math.abs(value)*.72);
+      if(ball.x>field.right-ball.r&&!inGoal){ball.x=field.right-ball.r;ball.vx=-bounceSpeed(ball.vx);}if(ball.x<field.left+ball.r&&!inGoal){ball.x=field.left+ball.r;ball.vx=bounceSpeed(ball.vx);}
+      if(ball.y<field.top+ball.r){ball.y=field.top+ball.r;ball.vy=bounceSpeed(ball.vy);}if(ball.y>field.bottom-ball.r){ball.y=field.bottom-ball.r;ball.vy=-bounceSpeed(ball.vy);}
     }
   }
   function updateGame(dt){

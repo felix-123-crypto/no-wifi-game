@@ -369,7 +369,7 @@
     game={mode,active:false,finished:false,arcadePointsAwarded:false,time:duration,homeScore:0,awayScore:0,skillScore:0,combo:0,controlled:0,messageTime:0,resetTime:0,opponentKick:0,stealCooldown:0,owner:null,
       home:createMatchTeam('home'),
       away:mode==='skill'?[]:createMatchTeam('away'),
-      ball:{x:480,y:270,vx:0,vy:0,r:10},lastTouch:'home',target:{x:875,y:150+Math.random()*240,r:29,phase:0},shots:0,passes:0,shotCharge:0,charging:false
+      ball:{x:480,y:270,vx:0,vy:0,r:10},lastTouch:'home',restartSpot:null,restartTeam:null,target:{x:875,y:150+Math.random()*240,r:29,phase:0},shots:0,passes:0,shotCharge:0,charging:false
     };
     game.spawnPositions={home:game.home.map(player=>({x:player.homeX,y:player.homeY})),away:game.away.map(player=>({x:player.homeX,y:player.homeY}))};
     const reserveRoles=['GK','CB','LB','CM','ST'];
@@ -450,7 +450,7 @@
     resetPositions(0);game.ball.x=480;game.ball.y=270;game.ball.vx=0;game.ball.vy=0;game.lastTouch='home';showMatchMessage(label);tone(520,.08,'square');
   }
   function restartFromOut(x,y){
-    resetPositions(0);game.ball.x=Math.max(field.left+game.ball.r,Math.min(field.right-game.ball.r,x));game.ball.y=Math.max(field.top+game.ball.r,Math.min(field.bottom-game.ball.r,y));game.ball.vx=0;game.ball.vy=0;game.ball.owner=null;game.resetTime=1.0;showMatchMessage('KICK RESTART');tone(260,.06,'square');
+    resetPositions(0);game.ball.x=Math.max(field.left+game.ball.r,Math.min(field.right-game.ball.r,x));game.ball.y=Math.max(field.top+game.ball.r,Math.min(field.bottom-game.ball.r,y));game.ball.vx=0;game.ball.vy=0;game.ball.owner=null;game.restartSpot={x:game.ball.x,y:game.ball.y};game.restartTeam=game.lastTouch==='home'?'away':'home';game.resetTime=1.0;showMatchMessage('KICK-IN');tone(260,.06,'square');
   }
   function scoreGoal(team){
     if(team==='home'){game.homeScore++;state.totalGoals++;showMatchMessage('GOAL!');tone(780,.24,'sawtooth');vibrate([30,30,70]);}else{game.awayScore++;showMatchMessage('THEY SCORE');tone(145,.24,'square');}
@@ -499,6 +499,7 @@
     if(!game?.active)return;
     game.time-=dt;if(game.time<=0){game.time=0;updateScoreUI();finishGame();return;}
     if(game.resetTime>0){game.resetTime-=dt;return;}
+    game.restartSpot=null;game.restartTeam=null;
     if(game.charging)game.shotCharge=Math.min(1,game.shotCharge+dt*.9);
     updateControlled(dt);if(game.mode!=='skill')updateOpponents(dt);collidePlayersWithBall(game.home);collidePlayersWithBall(game.away);updateBall(dt);updateScoreUI();
   }
@@ -627,7 +628,9 @@
     if(!game)return;
     const focus=game.home[game.controlled]||game.home[0];
     ctx.save();ctx.translate(W/2-focus.x,H/2-focus.y);
-    drawPitch();if(game.mode==='skill')drawTarget();game.home.forEach((player,index)=>drawPlayer(player,index===game.controlled));game.away.forEach(player=>drawPlayer(player));drawBall();ctx.restore();drawBench();
+    drawPitch();if(game.mode==='skill')drawTarget();game.home.forEach((player,index)=>drawPlayer(player,index===game.controlled));game.away.forEach(player=>drawPlayer(player));drawBall();
+    if(game.restartSpot){ctx.save();ctx.translate(game.restartSpot.x,game.restartSpot.y);ctx.strokeStyle='#ffe15b';ctx.lineWidth=3;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ffe15b';ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText(`${String(game.restartTeam||'').toUpperCase()} KICK-IN`,0,-27);ctx.restore();}
+    ctx.restore();drawBench();
     if(game.mode==='skill'){roundedRect(65,58,170,42,11,'rgba(5,12,26,.72)');ctx.fillStyle='#b6f13b';ctx.font='bold 12px Arial';ctx.textAlign='left';ctx.fillText(`COMBO x${game.combo}`,82,84);}
     if(game.charging){roundedRect(W/2-130,H-45,260,18,8,'rgba(5,12,26,.82)');ctx.fillStyle='#b6f13b';ctx.fillRect(W/2-124,H-39,248*game.shotCharge,6);ctx.fillStyle='white';ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText('HOLD X TO AIM + POWER · RELEASE TO KICK',W/2,H-24);}
   }

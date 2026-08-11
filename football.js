@@ -266,7 +266,11 @@
   const countryTeams={
     Mali:{short:'MALI',primary:'#23a36c',accent:'#ffd35b'},Brazil:{short:'BRAZIL',primary:'#f4c542',accent:'#1b9b63'},Japan:{short:'JAPAN',primary:'#f04d5e',accent:'#ffffff'},Mexico:{short:'MEXICO',primary:'#159447',accent:'#f4d35e'},USA:{short:'USA',primary:'#3b82f6',accent:'#ef4444'},Canada:{short:'CANADA',primary:'#ef4444',accent:'#ffffff'},Nigeria:{short:'NIGERIA',primary:'#21a366',accent:'#ffffff'},Senegal:{short:'SENEGAL',primary:'#20a464',accent:'#f7d154'},Italy:{short:'ITALY',primary:'#2c79c7',accent:'#ffffff'},Uruguay:{short:'URUGUAY',primary:'#69c5e8',accent:'#ffffff'},Morocco:{short:'MOROCCO',primary:'#c4313d',accent:'#159447'},Australia:{short:'AUSTRALIA',primary:'#f0c941',accent:'#159447'},Spain:{short:'SPAIN',primary:'#e34c3c',accent:'#f6cc4c'},Ghana:{short:'GHANA',primary:'#f0c941',accent:'#159447'},Korea:{short:'KOREA',primary:'#ffffff',accent:'#e24b5b'},Germany:{short:'GERMANY',primary:'#252525',accent:'#e8c547'},England:{short:'ENGLAND',primary:'#ffffff',accent:'#4f73c9'},Colombia:{short:'COLOMBIA',primary:'#f3c33c',accent:'#2f66b3'}
   };
+  const worldCupCountries=['Algeria','Argentina','Australia','Austria','Belgium','Bolivia','Brazil','Canada','Cape Verde','Chile','Colombia','Costa Rica','Croatia','Czechia','Denmark','DR Congo','Ecuador','Egypt','England','France','Germany','Ghana','Haiti','Iran','Iraq','Italy','Japan','Jordan','Mexico','Morocco','Netherlands','New Zealand','Nigeria','Norway','Panama','Paraguay','Poland','Portugal','Qatar','Saudi Arabia','Scotland','Senegal','Serbia','South Africa','South Korea','Spain','Switzerland','Tunisia','Türkiye','United States','Uruguay','Uzbekistan'];
+  const palette=['#23a36c','#f04d5e','#2c79c7','#f0c941','#159447','#e34c3c','#8b5cf6','#69c5e8'];
+  worldCupCountries.forEach((country,index)=>{if(!countryTeams[country])countryTeams[country]={short:country==='United States'?'USA':country.toUpperCase(),primary:palette[index%palette.length],accent:index%2?'#ffffff':'#ffd35b'};});
   const countryOptions=Object.keys(countryTeams);
+  function renderCountryOptions(){const select=$('#country-select');if(!select||select.options.length===countryOptions.length)return;select.innerHTML=countryOptions.map(country=>`<option value="${country}">${country}</option>`).join('');}
   const modeDetails={
     ranked:{kicker:'DIVISION FOOTBALL',title:'RANKED<br>ROAD',copy:'Face an adaptive opponent. Wins add rank points; losses cost a few. Your best squad starts automatically.',badges:['FREE ENTRY','+45 RP WIN','90 SECOND MATCH'],energy:0,time:90},
     quick:{kicker:'ARCADE FOOTBALL',title:'QUICK<br>MATCH',copy:'A fast eleven-a-side match with instant coin rewards and no rank pressure. Great for learning the controls.',badges:['FREE ENTRY','COIN REWARDS','75 SECOND MATCH'],energy:0,time:75},
@@ -280,6 +284,7 @@
   }
   function renderMode(){
     const detail=modeDetails[selectedMode];
+    renderCountryOptions();
     $$('.fz-mode-btn').forEach(button=>button.classList.toggle('active',button.dataset.mode===selectedMode));
     $('#mode-kicker').textContent=detail.kicker;$('#mode-title').innerHTML=detail.title;$('#mode-copy').textContent=detail.copy;$('#mode-badges').innerHTML=detail.badges.map(badge=>`<span>${badge}</span>`).join('');
     $('#opponent-name').textContent=selectedMode==='skill'?'TRAINING WALL':currentOpponent.name.toUpperCase();$('#opponent-ovr').textContent=selectedMode==='skill'?`BEST ${nf.format(state.skillBest)} PTS`:`OVR ${currentOpponent.ovr}`;

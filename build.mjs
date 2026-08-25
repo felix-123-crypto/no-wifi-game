@@ -15,15 +15,11 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
 await mkdir(join(dist, 'server'), { recursive: true });
 await mkdir(join(dist, '.openai'), { recursive: true });
-await mkdir(join(dist, '.openai', 'drizzle'), { recursive: true });
 for (const file of files) {
   if (!existsSync(join(root, file))) throw new Error(`Missing required site file: ${file}`);
   await cp(join(root, file), join(client, file));
 }
 await cp(join(root, 'worker.js'), join(dist, 'server', 'index.js'));
-if (existsSync(join(root, 'db', '0001_sync_profiles.sql'))) {
-  await cp(join(root, 'db', '0001_sync_profiles.sql'), join(dist, '.openai', 'drizzle', '0001_sync_profiles.sql'));
-}
 if (existsSync(join(root, '.openai', 'hosting.json'))) {
   await cp(join(root, '.openai', 'hosting.json'), join(dist, '.openai', 'hosting.json'));
 } else {

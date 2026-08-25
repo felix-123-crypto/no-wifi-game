@@ -1,7 +1,8 @@
-const VERSION='recess-v16';
+const VERSION='recess-v17';
 const PRECACHE=[
   ['/', '/index.html'],
   ['/styles.css', '/styles.css'],
+  ['/audiowide.ttf', '/audiowide.ttf'],
   ['/theme.css', '/theme.css'],
   ['/app.js', '/app.js'],
   ['/economy.js', '/economy.js'],

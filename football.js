@@ -43,6 +43,17 @@
     {id:'layla-jones',name:'Layla Jones',nation:'England',pos:'LB',group:'DEF',rating:65,pace:72,shot:43,pass:61,def:68,color:'#845840'},
     {id:'pablo-mendez',name:'Pablo Mendez',nation:'Spain',pos:'CAM',group:'MID',rating:63,pace:66,shot:62,pass:70,def:39,color:'#cb8c68'},
     {id:'sana-ito',name:'Sana Ito',nation:'Japan',pos:'GK',group:'GK',rating:61,pace:43,shot:22,pass:55,def:66,color:'#e5ae87'},
+    {id:'felix-ronaldo',name:'Cristiano Ronaldo',nation:'Portugal',pos:'ST',group:'ATT',rating:99,pace:97,shot:99,pass:93,def:45,color:'#c88965'},
+    {id:'felix-messi',name:'Lionel Messi',nation:'Argentina',pos:'RW',group:'ATT',rating:98,pace:96,shot:98,pass:99,def:42,color:'#d5a17d'},
+    {id:'felix-mbappe',name:'Kylian Mbappe',nation:'France',pos:'LW',group:'ATT',rating:98,pace:99,shot:97,pass:93,def:44,color:'#7b4b34'},
+    {id:'felix-debruyne',name:'Kevin De Bruyne',nation:'Belgium',pos:'CM',group:'MID',rating:97,pace:90,shot:95,pass:99,def:80,color:'#dfa887'},
+    {id:'felix-rodri',name:'Rodri',nation:'Spain',pos:'CDM',group:'MID',rating:97,pace:84,shot:88,pass:97,def:98,color:'#c78b68'},
+    {id:'felix-bellingham',name:'Jude Bellingham',nation:'England',pos:'CAM',group:'MID',rating:97,pace:94,shot:94,pass:96,def:89,color:'#754631'},
+    {id:'felix-hernandez',name:'Theo Hernandez',nation:'France',pos:'LB',group:'DEF',rating:96,pace:99,shot:84,pass:92,def:96,color:'#86543d'},
+    {id:'felix-vandijk',name:'Virgil van Dijk',nation:'Netherlands',pos:'CB',group:'DEF',rating:97,pace:91,shot:70,pass:91,def:99,color:'#70442f'},
+    {id:'felix-dias',name:'Ruben Dias',nation:'Portugal',pos:'CB',group:'DEF',rating:96,pace:87,shot:67,pass:89,def:98,color:'#b87957'},
+    {id:'felix-hakimi',name:'Achraf Hakimi',nation:'Morocco',pos:'RB',group:'DEF',rating:96,pace:99,shot:84,pass:94,def:94,color:'#9e674b'},
+    {id:'felix-buffon',name:'Gianluigi Buffon',nation:'Italy',pos:'GK',group:'GK',rating:97,pace:72,shot:45,pass:91,def:99,color:'#d29b76'},
     {id:'shop-speedster',name:'Kai Mensah',nation:'Ghana',pos:'RW',group:'ATT',rating:82,pace:96,shot:78,pass:76,def:35,color:'#5e3b2b'},
     {id:'shop-playmaker',name:'Lina Okoye',nation:'Nigeria',pos:'CAM',group:'MID',rating:83,pace:77,shot:75,pass:94,def:48,color:'#7a4a32'}
   ];
@@ -66,13 +77,16 @@
 
   const defaults = {
     version:1,coins:4200,energy:12,maxEnergy:15,upgradeTokens:18,tokens:18,xp:540,rankPoints:320,country:'Mali',
-    wins:0,draws:0,losses:0,skillBest:0,cupWins:0,cups:0,formation:'4-3-3',squad:{},
+    wins:0,draws:0,losses:0,skillBest:0,cupWins:0,cups:0,formation:'4-3-3',squad:{},customFormation:formations['4-3-3'].map(slot=>({...slot})),
     owned:Object.fromEntries(initialIds.map(id => [id,{level:1}])),
-    lastDaily:'',lastEnergyAt:Date.now(),sound:true,vibration:true,totalPacks:0,totalGoals:0
+    lastDaily:'',lastEnergyAt:Date.now(),sound:true,vibration:true,totalPacks:0,totalGoals:0,redeemedCodes:[]
   };
 
   let state = loadState();
+  state.customFormation=Array.isArray(state.customFormation)&&state.customFormation.length===11?state.customFormation:clone(defaults.customFormation);
+  formations.CUSTOM=state.customFormation;
   let selectedSlot = null;
+  let customDrag=null,suppressPitchClick=false;
   let selectedMode = 'ranked';
   let collectionFilter = 'ALL';
   let collectionSortAsc = false;
@@ -90,6 +104,7 @@
       const loaded = {...clone(defaults),...raw};
       loaded.owned = {...clone(defaults.owned),...(raw.owned || {})};
       loaded.squad = raw.squad || {};
+      loaded.redeemedCodes=Array.isArray(raw.redeemedCodes)?raw.redeemedCodes:[];
       const legacyShards = raw.upgradeTokens == null ? Object.values(loaded.owned).reduce((sum,entry)=>sum + Math.max(0,Math.floor(Number(entry?.shards)||0)),0) : 0;
       loaded.upgradeTokens = Math.max(0,Math.floor(Number(raw.upgradeTokens ?? raw.tokens ?? defaults.upgradeTokens)||0)) + legacyShards;
       loaded.tokens = loaded.upgradeTokens;
@@ -202,6 +217,9 @@
     $('#squad-ovr').textContent=stats.ovr;$('#squad-chem').textContent=stats.chem;$('#squad-att').textContent=stats.att;$('#squad-def').textContent=stats.def;
     $('#formation-select').value=state.formation;
     const pitch=$('#squad-pitch');
+    pitch.classList.toggle('custom-edit',state.formation==='CUSTOM');
+    $('#reset-custom').hidden=state.formation!=='CUSTOM';
+    $('#squad-hint').textContent=state.formation==='CUSTOM'?'DRAG PLAYERS TO BUILD YOUR FORMATION':selectedSlot?`CHOOSE A PLAYER FOR ${selectedSlot}`:'TAP A POSITION TO EDIT';
     $$('.fz-slot',pitch).forEach(node=>node.remove());
     formations[state.formation].forEach(slot=>{
       const id=state.squad[slot.key],player=playerMap.get(id),button=document.createElement('button');
@@ -254,6 +272,15 @@
     $('#achievement-list').innerHTML=items.map(item=>`<div class="fz-achievement" style="opacity:${item.done?1:.48}"><span>${item.icon}</span><div><h4>${item.name}${item.done?' ✓':''}</h4><p>${item.copy}</p></div></div>`).join('');
   }
   function renderAll(){ applyEnergyRegen();ensureSquad();renderWallet();renderHome();renderSquad();renderCollection();renderMode();saveState(); }
+
+  function redeemCode(){
+    const input=$('#redeem-code'),message=$('#redeem-message'),code=input.value.trim().toUpperCase();
+    if(code!=='FELIXDAGOAT'){message.textContent='CODE NOT FOUND';message.style.color='#ff8b9e';tone(150,.1,'square');return;}
+    if(state.redeemedCodes.includes(code)){message.textContent='CODE ALREADY REDEEMED';message.style.color='var(--fz-gold)';return;}
+    const rewardIds=players.filter(player=>player.id.startsWith('felix-')).map(player=>player.id);
+    rewardIds.forEach(id=>{state.owned[id] ||= {level:1};});state.redeemedCodes.push(code);autoBuildSquad();saveState();renderAll();
+    input.value='';message.textContent='ELITE XI UNLOCKED · RONALDO 99 ST';message.style.color='var(--fz-lime)';showToast('FELIXDAGOAT unlocked the elite XI!');tone(880,.25,'triangle');vibrate([30,40,70]);
+  }
 
   function setView(name){
     $$('.fz-view').forEach(view=>view.classList.toggle('active',view.id===`view-${name}`));
@@ -353,11 +380,15 @@
     {key:'LCM',role:'CM',shirt:8,x:360,y:142},{key:'CM',role:'CM',shirt:6,x:360,y:270},{key:'RCM',role:'CM',shirt:10,x:360,y:398},
     {key:'LW',role:'LW',shirt:11,x:610,y:145},{key:'ST',role:'ST',shirt:9,x:700,y:270},{key:'RW',role:'RW',shirt:7,x:610,y:395}
   ];
+  function activeMatchSlots(){
+    const slots=formations[state.formation]||formations['4-3-3'];
+    return slots.map((slot,index)=>({key:slot.key,role:slot.role,shirt:slot.role==='GK'?1:index+2,x:field.left+55+(100-slot.y)/100*(field.right-field.left-110),y:field.top+25+slot.x/100*(field.bottom-field.top-50)}));
+  }
   function createPlayer(x,y,team,index,role,shirt){const maxStamina=localStorage.getItem('recess-shop-item-staminaBoost')==='1'?130:100;return{x,y,vx:0,vy:0,r:17,team,index,role,shirt,stamina:maxStamina,maxStamina,cooldown:0,homeX:x,homeY:y};}
   function createMatchTeam(team){
     const palette=countryTeams[state.country]||countryTeams.Mali;
     const countryPool=players.filter(player=>player.nation===state.country);
-    return matchSlots.map((slot,index)=>{
+    return activeMatchSlots().map((slot,index)=>{
       const mirrored=team==='away';
       const x=mirrored?field.left+field.right-slot.x:slot.x;
       const player=createPlayer(x,slot.y,team,index,slot.role,slot.shirt);
@@ -670,13 +701,20 @@
     $('#sound-toggle').addEventListener('click',event=>{state.sound=!state.sound;event.currentTarget.classList.toggle('on',state.sound);saveState();if(state.sound)tone(500);});
     $('#vibration-toggle').addEventListener('click',event=>{state.vibration=!state.vibration;event.currentTarget.classList.toggle('on',state.vibration);saveState();if(state.vibration)vibrate(25);});
     $('#reset-progress').addEventListener('click',()=>{if(!confirm('Reset the entire Kickoff Zero career on this device?'))return;state=clone(defaults);ensureSquad();saveState();$('#settings-modal').hidden=true;renderAll();showToast('Career reset. A fresh squad is ready.');});
+    $('#redeem-submit').addEventListener('click',redeemCode);$('#redeem-code').addEventListener('keydown',event=>{if(event.key==='Enter')redeemCode();});
     $('#claim-daily').addEventListener('click',claimDaily);
-    $('#formation-select').addEventListener('change',event=>{state.formation=event.target.value;autoBuildSquad();selectedSlot=null;saveState();renderAll();showToast(`${state.formation} formation selected.`);});
-    $('#squad-pitch').addEventListener('click',event=>{const button=event.target.closest('[data-slot]');if(!button)return;selectedSlot=button.dataset.slot;$('#squad-hint').textContent=`CHOOSE A PLAYER FOR ${selectedSlot}`;renderSquad();});
+    $('#formation-select').addEventListener('change',event=>{state.formation=event.target.value;if(state.formation==='CUSTOM')formations.CUSTOM=state.customFormation;autoBuildSquad();selectedSlot=null;saveState();renderAll();showToast(state.formation==='CUSTOM'?'Custom formation ready. Drag players anywhere on the pitch.':`${state.formation} formation selected.`);});
+    const squadPitch=$('#squad-pitch');
+    squadPitch.addEventListener('pointerdown',event=>{if(state.formation!=='CUSTOM')return;const button=event.target.closest('[data-slot]');if(!button)return;const slot=formations.CUSTOM.find(item=>item.key===button.dataset.slot);if(!slot)return;event.preventDefault();customDrag={pointerId:event.pointerId,button,slot,startX:event.clientX,startY:event.clientY,moved:false};button.classList.add('dragging');squadPitch.setPointerCapture?.(event.pointerId);});
+    squadPitch.addEventListener('pointermove',event=>{if(!customDrag||event.pointerId!==customDrag.pointerId)return;const rect=squadPitch.getBoundingClientRect(),x=Math.max(8,Math.min(92,(event.clientX-rect.left)/rect.width*100)),y=Math.max(9,Math.min(92,(event.clientY-rect.top)/rect.height*100));if(Math.hypot(event.clientX-customDrag.startX,event.clientY-customDrag.startY)>5)customDrag.moved=true;customDrag.slot.x=Math.round(x*10)/10;customDrag.slot.y=Math.round(y*10)/10;customDrag.button.style.left=`${customDrag.slot.x}%`;customDrag.button.style.top=`${customDrag.slot.y}%`;});
+    const finishCustomDrag=event=>{if(!customDrag||event.pointerId!==customDrag.pointerId)return;customDrag.button.classList.remove('dragging');suppressPitchClick=customDrag.moved;if(customDrag.moved){state.customFormation=formations.CUSTOM.map(slot=>({...slot}));saveState();showToast('Custom formation saved and ready for matches.');}customDrag=null;};
+    squadPitch.addEventListener('pointerup',finishCustomDrag);squadPitch.addEventListener('pointercancel',finishCustomDrag);
+    squadPitch.addEventListener('click',event=>{if(suppressPitchClick){suppressPitchClick=false;return;}const button=event.target.closest('[data-slot]');if(!button)return;selectedSlot=button.dataset.slot;renderSquad();});
     $('#squad-player-list').addEventListener('click',event=>{const button=event.target.closest('[data-squad-player]');if(button)assignPlayer(button.dataset.squadPlayer);});
     $('#auto-squad').addEventListener('click',()=>{autoBuildSquad();saveState();renderAll();showToast('Squad rebuilt for position fit.');});
     $('#best-squad').addEventListener('click',()=>{autoBuildSquad();saveState();renderAll();showToast('Highest-rated compatible eleven selected.');});
     $('#clear-selection').addEventListener('click',()=>{selectedSlot=null;$('#squad-hint').textContent='TAP A POSITION TO EDIT';renderSquad();});
+    $('#reset-custom').addEventListener('click',()=>{state.customFormation=clone(defaults.customFormation);formations.CUSTOM=state.customFormation;autoBuildSquad();selectedSlot=null;saveState();renderAll();showToast('Custom formation reset to a balanced shape.');});
     $('#roster-search').addEventListener('input',renderSquadPlayerList);$('#roster-sort').addEventListener('change',renderSquadPlayerList);
     $$('.pack-open').forEach(button=>button.addEventListener('click',()=>openPack(button.dataset.pack)));
     $('#reveal-next').addEventListener('click',nextReveal);$('#reveal-skip').addEventListener('click',closePackReveal);

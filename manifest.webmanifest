@@ -2,9 +2,9 @@
   "name":"Recess Arcade",
   "short_name":"Recess",
   "description":"Six full games that keep working after your first visit.",
-  "start_url":"/",
+  "start_url":"./index.html",
   "display":"standalone",
-  "background_color":"#fffaf0",
-  "theme_color":"#14213d",
+  "background_color":"#050806",
+  "theme_color":"#39ff88",
   "icons":[]
 }

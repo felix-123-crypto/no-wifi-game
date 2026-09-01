@@ -105,13 +105,13 @@
     if (document.querySelector('[data-points-wallet]')) return;
     const host = document.querySelector('.top-actions') || document.querySelector('.fz-wallet') || document.querySelector('.topbar');
     if (!host) return;
-    const wallet = document.createElement('a'); wallet.href = '/shop'; wallet.className = 'points-wallet'; wallet.dataset.pointsWallet = 'true'; wallet.setAttribute('aria-label','Open arcade points shop');
+    const wallet = document.createElement('a'); wallet.href = 'shop.html'; wallet.className = 'points-wallet'; wallet.dataset.pointsWallet = 'true'; wallet.setAttribute('aria-label','Open arcade points shop');
     wallet.innerHTML = `<span aria-hidden="true">★</span><b data-arcade-points>${balance().toLocaleString()}</b><em>PTS · SHOP</em>`;
     host.append(wallet);
   };
   const registerOfflineWorker = () => {
     if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
-    navigator.serviceWorker.register('/sw.js', {updateViaCache:'none'})
+    navigator.serviceWorker.register('sw.js', {scope:'./',updateViaCache:'none'})
       .then(registration => registration.update())
       .catch(() => {});
   };

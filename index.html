@@ -20,7 +20,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#top" aria-label="Recess Arcade home"><span>R</span> RECESS ARCADE</a>
-    <a class="utility-button" href="/shop">POINTS SHOP</a>
+    <a class="utility-button" href="shop.html">POINTS SHOP</a>
     <div class="top-actions"><div class="status" id="network-status"><i></i> ONLINE · OFFLINE READY</div></div>
   </header>
 
@@ -53,39 +53,34 @@
             <label><input type="checkbox" name="age" value="everyone"><span>Everyone</span><b>7</b></label>
             <label><input type="checkbox" name="age" value="10plus"><span>10+</span><b>3</b></label>
           </fieldset>
-          <fieldset><legend>MIN. RATING</legend>
-            <label><input type="radio" name="rating" value="0" checked><span>Show all</span></label>
-            <label><input type="radio" name="rating" value="4.5"><span>4.5 and up</span></label>
-            <label><input type="radio" name="rating" value="4.8"><span>4.8 and up</span></label>
-          </fieldset>
         </aside>
 
         <div class="games-grid" id="games-grid">
-          <a class="game-card block featured" href="/voxel" data-type="creative" data-age="everyone 10plus" data-rating="4.9">
+          <a class="game-card block featured" href="voxel.html" data-type="creative" data-age="everyone 10plus">
             <div class="game-visual"><div class="pixel-hill"></div><div class="pickaxe">⛏</div><div class="rank">FULL 3D WORLD</div></div>
-            <div class="game-info"><div><p>CREATIVE · EVERYONE</p><h3>Block Quest 3D</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.9 <small>MINE · BUILD · EXPLORE</small></div></div>
+            <div class="game-info"><div><p>CREATIVE · EVERYONE</p><h3>Block Quest 3D</h3></div><span class="play">PLAY <b>→</b></span></div>
           </a>
-          <a class="game-card goal" href="/football" data-type="sports" data-age="everyone" data-rating="4.9">
+          <a class="game-card goal" href="football.html" data-type="sports" data-age="everyone">
             <div class="game-visual"><div class="field-lines"></div><div class="ball">⚽</div><div class="rank">ULTIMATE TEAM</div></div>
-            <div class="game-info"><div><p>SPORTS · EVERYONE</p><h3>Football Dynasty</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.9 <small>PACKS · RANKS · MATCHES</small></div></div>
+            <div class="game-info"><div><p>SPORTS · EVERYONE</p><h3>Football Dynasty</h3></div><span class="play">PLAY <b>→</b></span></div>
           </a>
-          <a class="game-card pac" href="/game?game=pacman" data-type="arcade" data-age="everyone 10plus" data-rating="4.8">
+          <a class="game-card pac" href="game.html?game=pacman" data-type="arcade" data-age="everyone 10plus">
             <div class="game-visual"><span class="ghost">◖̈</span><span class="pacman"></span><i>• • • •</i><div class="rank">#1 PICK</div></div>
-            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Maze Muncher</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.8 <small>QUICK PLAY</small></div></div>
+            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Maze Muncher</h3></div><span class="play">PLAY <b>→</b></span></div>
           </a>
-          <a class="game-card number" href="/classics?game=2048" data-type="arcade" data-age="everyone 10plus" data-rating="4.8">
+          <a class="game-card number" href="classics.html?game=2048" data-type="arcade" data-age="everyone 10plus">
             <div class="game-visual"><div class="tile-stack"><i>2</i><i>0</i><i>4</i><i>8</i></div><div class="rank">NUMBER PUZZLE</div></div>
-            <div class="game-info"><div><p>PUZZLE · EVERYONE</p><h3>2048</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.8 <small>THINK AHEAD</small></div></div>
+            <div class="game-info"><div><p>PUZZLE · EVERYONE</p><h3>2048</h3></div><span class="play">PLAY <b>→</b></span></div>
           </a>
-          <a class="game-card tetris" href="/classics?game=tetris" data-type="arcade" data-age="everyone" data-rating="4.7">
+          <a class="game-card tetris" href="classics.html?game=tetris" data-type="arcade" data-age="everyone">
             <div class="game-visual"><div class="tetrominoes"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="rank">LINE CLEAR</div></div>
-            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Block Drop</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.7 <small>LEVEL UP</small></div></div>
+            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Block Drop</h3></div><span class="play">PLAY <b>→</b></span></div>
           </a>
-          <a class="game-card dino" href="/game?game=dino" data-type="arcade" data-age="everyone" data-rating="4.8"><div class="game-visual"><div class="dino-sky">☁</div><div class="dino-runner">◆</div><div class="dino-cactus">♣</div><div class="rank">ENDLESS RUN</div></div><div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Chrome Dino</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.8 <small>JUMP · RUN · SURVIVE</small></div></div></a>
-          <a class="game-card gd" href="/game?game=gd" data-type="arcade" data-age="everyone 10plus" data-rating="4.9"><div class="game-visual"><div class="gd-grid-art"></div><div class="gd-cube-art">◆</div><div class="gd-spike-art">▲ ▲ ▲</div><div class="rank">RHYTHM RUN</div></div><div class="game-info"><div><p>ARCADE · EVERYONE 10+</p><h3>Cube Rush</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.9 <small>JUMP · TIME · SURVIVE</small></div></div></a>
-          <a class="game-card snake" href="/classics?game=snake" data-type="arcade" data-age="everyone" data-rating="4.7">
+          <a class="game-card dino" href="game.html?game=dino" data-type="arcade" data-age="everyone"><div class="game-visual"><div class="dino-sky">☁</div><div class="dino-runner">◆</div><div class="dino-cactus">♣</div><div class="rank">ENDLESS RUN</div></div><div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Chrome Dino</h3></div><span class="play">PLAY <b>→</b></span></div></a>
+          <a class="game-card gd" href="game.html?game=gd" data-type="arcade" data-age="everyone 10plus"><div class="game-visual"><div class="gd-grid-art"></div><div class="gd-cube-art">◆</div><div class="gd-spike-art">▲ ▲ ▲</div><div class="rank">RHYTHM RUN</div></div><div class="game-info"><div><p>ARCADE · EVERYONE 10+</p><h3>Cube Rush</h3></div><span class="play">PLAY <b>→</b></span></div></a>
+          <a class="game-card snake" href="classics.html?game=snake" data-type="arcade" data-age="everyone">
             <div class="game-visual"><div class="snake-art">● ● ● ● ◉</div><div class="fruit">◆</div><div class="rank">HIGH-SPEED</div></div>
-            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Neon Snake</h3></div><span class="play">PLAY <b>→</b></span><div class="rating">★ 4.7 <small>CHASE THE SCORE</small></div></div>
+            <div class="game-info"><div><p>ARCADE · EVERYONE</p><h3>Neon Snake</h3></div><span class="play">PLAY <b>→</b></span></div>
           </a>
           <div class="empty" hidden><span>¯\_(ツ)_/¯</span><h3>No games match</h3><p>Try removing a filter.</p></div>
         </div>

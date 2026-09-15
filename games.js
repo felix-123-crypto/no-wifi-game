@@ -30,18 +30,24 @@ function gdBeginner(){
   const finish=gdConfigs.stereo.finish*25;
   let p={x:130,y:368,vy:0,w:32,h:32,onGround:true,rot:0},distance=0,last=performance.now(),old=false;
   const chart=[620,860,1110,1380,1640,1900,2180,2460,2720,3020].map((x,i)=>({x,y:402,w:i%4===3?38:24,h:i%4===3?34:28}));
+  const coins=[760,1510,2290].map(x=>({x,y:300,collected:false}));
+  const pads=[{x:1280,w:46},{x:2360,w:46}];
   const jump=()=>{if(p.onGround){p.vy=-640;p.onGround=false}};
   function draw(){
     const g=ctx.createLinearGradient(0,0,800,500);g.addColorStop(0,'#21165b');g.addColorStop(1,'#101e4b');ctx.fillStyle=g;ctx.fillRect(0,0,800,500);
     ctx.strokeStyle='rgba(117,255,240,.15)';for(let x=0;x<800;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,500);ctx.stroke()}for(let y=0;y<500;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(800,y);ctx.stroke()}
     ctx.fillStyle='#14e6d4';ctx.fillRect(0,402,800,5);
     ctx.fillStyle='#ff4f9a';chart.forEach(o=>{const x=o.x-distance+p.x;if(x>-60&&x<840){ctx.beginPath();ctx.moveTo(x,o.y);ctx.lineTo(x+o.w/2,o.y-o.h);ctx.lineTo(x+o.w,o.y);ctx.closePath();ctx.fill()}});
+    ctx.fillStyle='#ffe66d';pads.forEach(o=>{const x=o.x-distance+p.x;if(x>-60&&x<840){ctx.fillRect(x,392,o.w,10);ctx.fillRect(x+7,386,6,6);ctx.fillRect(x+o.w-13,386,6,6)}});
+    coins.forEach(c=>{if(c.collected)return;const x=c.x-distance+p.x;if(x>-30&&x<830){ctx.strokeStyle='#ffe66d';ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,c.y,11,0,Math.PI*2);ctx.stroke();ctx.fillStyle='rgba(255,230,109,.22)';ctx.fill()}});
     ctx.save();ctx.translate(p.x+16,p.y+16);ctx.rotate(p.rot);ctx.fillStyle='#ffdc4a';ctx.fillRect(-16,-16,32,32);ctx.fillStyle='#21165b';ctx.fillRect(-8,-8,6,6);ctx.fillRect(5,-8,6,6);ctx.restore();
-    ctx.fillStyle='#ffe66d';ctx.fillRect(760,120,6,282);ctx.fillStyle='white';ctx.font='bold 13px Audiowide,Arial';ctx.fillText(`STEREO MADNESS · ${practiceMode?'PRACTICE':'NORMAL'}`,20,28);ctx.fillText(`${Math.min(100,Math.floor(distance/finish*100))}%`,735,28)
+    ctx.fillStyle='#ffe66d';ctx.fillRect(760,120,6,282);ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(20,42,760,5);ctx.fillStyle='#ffe66d';ctx.fillRect(20,42,760*Math.min(1,distance/finish),5);ctx.fillStyle='white';ctx.font='bold 13px Audiowide,Arial';ctx.fillText(`STEREO MADNESS · ${practiceMode?'PRACTICE':'NORMAL'}`,20,28);ctx.fillText(`${Math.min(100,Math.floor(distance/finish*100))}%`,735,28);ctx.font='bold 11px Arial';ctx.fillText(`COINS ${coins.filter(c=>c.collected).length}/${coins.length}`,20,68)
   }
   function loop(now){
     if(!running)return;const dt=Math.min(.035,(now-last)/1000);last=now;const j=keys.Space||keys.ArrowUp||keys.KeyW;if(j&&!old)jump();old=j;
     distance+=255*dt;p.vy+=1550*dt;p.y+=p.vy*dt;p.onGround=false;if(p.y>=368){p.y=368;p.vy=0;p.onGround=true}p.rot+=dt*6;
+    pads.forEach(o=>{const x=o.x-distance+p.x;if(p.x+p.w>x&&p.x<x+o.w&&p.y+p.h>=402&&p.y+p.h<430&&p.vy>=0){p.y=334;p.vy=-860;p.onGround=false}});
+    coins.forEach(c=>{const x=c.x-distance+p.x;if(!c.collected&&Math.abs((p.x+p.w/2)-x)<22&&Math.abs((p.y+p.h/2)-c.y)<28){c.collected=true;window.RecessPoints?.award?.(25,'Geometry coin')}});
     for(const o of chart){const x=o.x-distance+p.x;if(p.x+p.w-4>x&&p.x+4<x+o.w&&p.y+p.h>o.y-o.h+4&&p.y<o.y){if(practiceMode){distance=Math.floor(distance/300)*300;p.y=368;p.vy=0;showPracticeCheckpoint();}else{end(`STEREO MADNESS ended at ${Math.floor(distance/finish*100)}%.`);return}}}
     if(p.y>500){if(practiceMode){distance=Math.floor(distance/300)*300;p.y=368;p.vy=0;showPracticeCheckpoint()}else{end(`STEREO MADNESS ended at ${Math.floor(distance/finish*100)}%.`);return}}
     setScore(Math.floor(distance/25));if(distance>=finish){end('STEREO MADNESS complete! 100%');return}draw();raf=requestAnimationFrame(loop)

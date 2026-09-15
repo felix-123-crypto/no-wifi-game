@@ -301,6 +301,7 @@
   const modeDetails={
     ranked:{kicker:'DIVISION FOOTBALL',title:'RANKED<br>ROAD',copy:'Face an adaptive opponent. Wins add rank points; losses cost a few. Your best squad starts automatically.',badges:['FREE ENTRY','+45 RP WIN','90 SECOND MATCH'],energy:0,time:90},
     quick:{kicker:'ARCADE FOOTBALL',title:'QUICK<br>MATCH',copy:'A fast eleven-a-side match with instant coin rewards and no rank pressure. Great for learning the controls.',badges:['FREE ENTRY','COIN REWARDS','75 SECOND MATCH'],energy:0,time:75},
+    manager:{kicker:'TOUCHLINE TACTICS',title:'MANAGER<br>MODE',copy:'Watch your selected squad and saved formation play automatically. Press B during the match to make a substitution.',badges:['AUTO PLAY','LIVE SUBSTITUTIONS','90 SECOND MATCH'],energy:0,time:90},
     skill:{kicker:'SOLO TRAINING',title:'TARGET<br>RUSH',copy:'Control one striker, dribble into range, and strike the glowing targets. Chain hits quickly to set a new club record.',badges:['ONE PLAYER','NO OPPONENTS','45 SECOND CHALLENGE'],energy:0,time:45},
     tournament:{kicker:'THREE-MATCH EVENT',title:'ZERO<br>CUP',copy:'Win three matches in a row to lift the Zero Cup. A loss resets the run, so every goal matters.',badges:['FREE ENTRY','3 WINS FOR TROPHY','75 SECOND MATCH'],energy:0,time:75}
   };
@@ -392,10 +393,11 @@
       const mirrored=team==='away';
       const x=mirrored?field.left+field.right-slot.x:slot.x;
       const player=createPlayer(x,slot.y,team,index,slot.role,slot.shirt);
-      const template=countryPool[index%Math.max(1,countryPool.length)]||players[index%players.length];
-      player.playerId=team==='home'?`country-${state.country}-${index}`:'';
-      player.name=team==='home'?`${template.name.split(' ')[0]} ${slot.role} ${slot.shirt}`:'Rival player';
-      player.nation=team==='home'?state.country:'Rival';
+      const template=team==='home'?(playerMap.get(state.squad[slot.key])||countryPool[index%Math.max(1,countryPool.length)]||players[index%players.length]):players[index%players.length];
+      player.playerId=team==='home'?template.id:'';
+      player.rating=team==='home'?ratingOf(template.id):currentOpponent.ovr;
+      player.name=team==='home'?template.name:'Rival player';
+      player.nation=team==='home'?template.nation:'Rival';
       player.jerseyColor=team==='home'?palette.primary:'#ff5873';player.accentColor=team==='home'?palette.accent:'#ffe2e8';
       return player;
     });
@@ -427,7 +429,7 @@
     applyEnergyRegen();const detail=modeDetails[mode];
     saveState();renderWallet();selectedMode=mode;pickOpponent();
     $('#match-screen').hidden=false;document.body.style.overflow='hidden';$('#home-name').textContent=(countryTeams[state.country]||countryTeams.Mali).short;$('#away-name').textContent=mode==='skill'?'TARGETS':currentOpponent.name.split(' ')[0].toUpperCase();
-    $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':'READY?';$('#match-overlay-copy').textContent=mode==='skill'?'One player only. Move into range and shoot at the glowing target. Score quickly to build a combo.':'Real rules are active: throw-ins, corners, goal kicks, kickoffs, fouls, offside, and own goals. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.';$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START SOLO CHALLENGE':'KICK OFF';$('#match-begin').dataset.result='';
+    $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':mode==='manager'?'📋':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':mode==='manager'?'MANAGER MODE':'READY?';$('#match-overlay-copy').textContent=mode==='skill'?'One player only. Move into range and shoot at the glowing target. Score quickly to build a combo.':mode==='manager'?'Your chosen starting XI follows your saved formation and plays automatically. Watch from the touchline and press B to substitute the highlighted player.':'Real rules are active: throw-ins, corners, goal kicks, kickoffs, fouls, offside, and own goals. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.';$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START SOLO CHALLENGE':mode==='manager'?'START MANAGING':'KICK OFF';$('#match-begin').dataset.result='';
     setupGame(mode);resizeCanvas();document.documentElement.requestFullscreen?.().catch(()=>{});lastFrame=performance.now();fpsFrames=0;fpsTime=lastFrame;cancelAnimationFrame(rafId);rafId=requestAnimationFrame(gameLoop);
   }
   function beginGame(){
@@ -474,6 +476,25 @@
       }else if(player===chaser&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<30&&player.cooldown<=0){
         const targetX=field.left+92,targetY=Math.max(field.goalTop+32,Math.min(field.goalBottom-32,270+(Math.random()-.5)*70));
         const angle=Math.atan2(targetY-player.y,targetX-player.x)+(Math.random()-.5)*.12;game.ball.owner=null;game.ball.vx=Math.cos(angle)*390;game.ball.vy=Math.sin(angle)*390;game.lastTouch='away';player.cooldown=.8;game.opponentKick++;tone(170,.04,'square');
+      }
+    });
+  }
+  function updateManagerHome(dt){
+    game.stealCooldown=Math.max(0,game.stealCooldown-dt);
+    const ball=game.ball,owner=ball.owner?.team==='home'?game.home[ball.owner.index]:null,chaser=nearestPlayer(game.home,ball.x,ball.y);
+    game.home.forEach(player=>{
+      player.cooldown=Math.max(0,player.cooldown-dt);
+      if(player===owner){
+        const targetY=Math.max(field.goalTop+25,Math.min(field.goalBottom-25,270+(Math.random()-.5)*18));
+        moveAI(player,field.right-55,targetY,dt,168+(player.rating-70)*1.15);
+        if((player.x>690||player.cooldown<=0)&&Math.hypot(player.x-ball.x,player.y-ball.y)<48){
+          const dx=field.right+35-ball.x,dy=targetY-ball.y,d=Math.hypot(dx,dy)||1,power=420+(player.rating-70)*5;
+          ball.owner=null;ball.vx=dx/d*power;ball.vy=dy/d*power;game.lastTouch='home';game.shots++;player.cooldown=1.15;showMatchMessage('TACTICAL SHOT');
+        }
+      }else{
+        const closest=player===chaser,attacking=ball.owner?.team==='home'||game.lastTouch==='home',shiftX=(ball.x-player.homeX)*.18+(attacking?25:-8),shiftY=(ball.y-player.homeY)*.13;
+        moveAI(player,closest?ball.x:player.homeX+shiftX,closest?ball.y:player.homeY+shiftY,dt,closest?158:138);
+        if(closest&&!ball.owner&&Math.hypot(player.x-ball.x,player.y-ball.y)<32&&Math.hypot(ball.vx,ball.vy)<210){ball.owner={team:'home',index:player.index};game.lastTouch='home';player.cooldown=.7;showMatchMessage('POSSESSION');}
       }
     });
   }
@@ -547,30 +568,30 @@
     if(game.resetTime>0){game.resetTime-=dt;if(game.resetTime<=0)releaseRestart();return;}
     game.restartSpot=null;game.restartTeam=null;game.restartType=null;
     if(game.charging)game.shotCharge=Math.min(1,game.shotCharge+dt*.9);
-    updateControlled(dt);if(game.mode!=='skill')updateOpponents(dt);collidePlayersWithBall(game.home);collidePlayersWithBall(game.away);updateBall(dt);updateScoreUI();
+    if(game.mode==='manager')updateManagerHome(dt);else updateControlled(dt);if(game.mode!=='skill')updateOpponents(dt);collidePlayersWithBall(game.home);collidePlayersWithBall(game.away);updateBall(dt);updateScoreUI();
   }
   function actionShoot(){
-    if(!game?.active||game.resetTime>0)return;
+    if(!game?.active||game.resetTime>0||game.mode==='manager')return;
     if(!game.charging){game.charging=true;game.shotCharge=0;return;}
     const player=game.home[game.controlled],ball=game.ball;if(Math.hypot(player.x-ball.x,player.y-ball.y)>48){game.charging=false;showMatchMessage('GET CLOSER');return;}
     let targetY=game.mode==='skill'?game.target.y:270+(input.down?85:0)-(input.up?85:0),targetX=field.right+35,dx=targetX-ball.x,dy=targetY-ball.y,d=Math.hypot(dx,dy)||1,power=320+game.shotCharge*520;ball.owner=null;ball.vx=dx/d*power;ball.vy=dy/d*power;game.lastTouch='home';game.shots++;game.charging=false;game.shotCharge=0;showMatchMessage(power>650?'POWER SHOT':'SHOT');tone(280,.07,'square');vibrate(18);
   }
   function actionGoalkeeperKick(){
-    if(!game?.active||game.resetTime>0)return;
+    if(!game?.active||game.resetTime>0||game.mode==='manager')return;
     const player=game.home[game.controlled],ball=game.ball;
     if(player.role!=='GK'){showMatchMessage('SELECT THE GK');return;}
     if(Math.hypot(player.x-ball.x,player.y-ball.y)>82){showMatchMessage('GK GETS SET');return;}
     ball.owner=null;ball.x=player.x+24;ball.y=player.y;ball.vx=520;ball.vy=(270-ball.y)*1.4;game.lastTouch='home';game.shots++;showMatchMessage('GOALKEEPER KICK');tone(300,.1,'square');vibrate(20);
   }
   function actionPass(){
-    if(!game?.active)return;if(game.mode==='skill'){showMatchMessage('SOLO MODE');return;}const player=game.home[game.controlled],ball=game.ball;if(Math.hypot(player.x-ball.x,player.y-ball.y)>50)return;
+    if(!game?.active||game.mode==='manager')return;if(game.mode==='skill'){showMatchMessage('SOLO MODE');return;}const player=game.home[game.controlled],ball=game.ball;if(Math.hypot(player.x-ball.x,player.y-ball.y)>50)return;
     let candidates=game.home.filter((_,index)=>index!==game.controlled);candidates.sort((a,b)=>b.x-a.x||Math.abs(a.y-ball.y)-Math.abs(b.y-ball.y));const target=candidates[0];if(!target)return;
     const defenders=game.away.map(defender=>defender.x).sort((a,b)=>b-a),offsideLine=defenders[1]??field.right;
     if(target.x>480&&target.x>ball.x+12&&target.x>offsideLine+4){prepareRestart('OFFSIDE · FREE KICK','away',target.x,target.y);return;}
     const dx=target.x-ball.x,dy=target.y-ball.y,d=Math.hypot(dx,dy)||1;ball.owner=null;ball.vx=dx/d*410;ball.vy=dy/d*410;game.lastTouch='home';game.controlled=target.index;game.passes++;tone(390,.05,'triangle');
   }
   function switchPlayer(){
-    if(!game?.active)return;
+    if(!game?.active||game.mode==='manager')return;
     const current=game.home[game.controlled];
     const candidates=game.home.filter(player=>player!==current).sort((a,b)=>Math.hypot(a.x-game.ball.x,a.y-game.ball.y)-Math.hypot(b.x-game.ball.x,b.y-game.ball.y));
     if(!candidates.length)return;
@@ -581,7 +602,7 @@
     tone(470,.05,'triangle');
   }
   function actionSteal(){
-    if(!game?.active||game.stealCooldown>0)return;
+    if(!game?.active||game.stealCooldown>0||game.mode==='manager')return;
     const player=game.home[game.controlled],opponent=nearestPlayer(game.away,game.ball.x,game.ball.y);
     const nearBall=Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<62;
     const nearOpponent=opponent&&Math.hypot(player.x-opponent.x,player.y-opponent.y)<70;

@@ -1,7 +1,7 @@
 const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best');
 const overlay=document.querySelector('#overlay'),startBtn=document.querySelector('#start'),titleEl=document.querySelector('#game-title'),subEl=document.querySelector('#game-subtitle'),kickEl=document.querySelector('#game-kicker'),howEl=document.querySelector('#how');
 const game=new URLSearchParams(location.search).get('game')||'pacman';let running=false,score=0,raf,keys={};
-let gdLevel='stereo',practiceMode=false;const gdConfigs={stereo:{label:'STEREO MADNESS',speed:255,next:1.35,finish:120,platforms:false},backtrack:{label:'BACK ON TRACK',speed:300,next:1.12,finish:145,platforms:true},polargeist:{label:'POLARGEIST',speed:340,next:.92,finish:170,platforms:true}};const gdOptions=document.querySelector('#gd-options');if(game==='gd'&&gdOptions){gdOptions.hidden=false;document.querySelector('#gd-level').addEventListener('change',e=>{gdLevel=e.target.value;});document.querySelector('#gd-practice').addEventListener('change',e=>{practiceMode=e.target.checked;});}
+let gdLevel='stereo',practiceMode=false;const gdConfigs={stereo:{label:'STEREO MADNESS',speed:255,next:1.35,finish:460,platforms:false},backtrack:{label:'BACK ON TRACK',speed:300,next:1.12,finish:145,platforms:true},polargeist:{label:'POLARGEIST',speed:340,next:.92,finish:170,platforms:true}};const gdOptions=document.querySelector('#gd-options');if(game==='gd'&&gdOptions){gdOptions.hidden=false;document.querySelector('#gd-level').addEventListener('change',e=>{gdLevel=e.target.value;});document.querySelector('#gd-practice').addEventListener('change',e=>{practiceMode=e.target.checked;});}
 const meta={pacman:['Maze Muncher','ARCADE CLASSIC','Clear the maze. Dodge the ghosts. Chase a new high score.','Use arrow keys or WASD. Collect every dot while keeping clear of roaming ghosts.'],blocks:['Block Quest','CREATIVE MODE','Dig deep, gather gems, and build your way to the sky.','Move with arrows or WASD. Click blocks to mine them, then press Space to place a block nearby.'],football:['Pocket Football','SPORTS CHALLENGE','Aim your shot. Beat the keeper. Find the top corner.','Move the target with arrows or WASD, then press Space or tap the game to shoot.'],dino:['Chrome Dino','ARCADE RUNNER','Jump the cacti and survive as the desert gets faster.','Press Space, ArrowUp, or W to jump. The longer you survive, the faster it gets.'],gd:['Cube Rush','GEOMETRY RUNNER','Choose a premade level, chase 100%, or practice from checkpoints.','Pick Stereo Madness, Back on Track, Polargeist, or Wave Run. Hold Space, ArrowUp, or W to control your jump or wave.']};
 [titleEl.textContent,kickEl.textContent,subEl.textContent,howEl.textContent]=meta[game]||meta.pacman;document.title=`${titleEl.textContent} — Recess Arcade`;
 let best=Number(localStorage.getItem(`recess-${game}`)||0);bestEl.textContent=String(best).padStart(3,'0');
@@ -29,9 +29,9 @@ function gdBeginner(){
   if(gdLevel!=='stereo')return gdBeginnerOriginal();
   const finish=gdConfigs.stereo.finish*25;
   let p={x:130,y:368,vy:0,w:32,h:32,onGround:true,rot:0},distance=0,last=performance.now(),old=false;
-  const chart=[620,860,1110,1380,1640,1900,2180,2460,2720,3020].map((x,i)=>({x,y:402,w:i%4===3?38:24,h:i%4===3?34:28}));
-  const coins=[760,1510,2290].map(x=>({x,y:300,collected:false}));
-  const pads=[{x:1280,w:46},{x:2360,w:46}];
+  const chart=[];for(let i=0;i<44;i++){const x=620+i*255;const h=i%9===5?42:i%5===2?34:28;chart.push({x,y:402,w:h>38?30:24,h});if(i%7===3)chart.push({x:x+34,y:402,w:24,h:28})}
+  const coins=[760,1510,2290,3820,5360,6890,8440,9980].map(x=>({x,y:300,collected:false}));
+  const pads=[{x:1280,w:46},{x:2360,w:46},{x:4620,w:46},{x:7440,w:46},{x:9720,w:46}];
   const jump=()=>{if(p.onGround){p.vy=-640;p.onGround=false}};
   function draw(){
     const g=ctx.createLinearGradient(0,0,800,500);g.addColorStop(0,'#21165b');g.addColorStop(1,'#101e4b');ctx.fillStyle=g;ctx.fillRect(0,0,800,500);

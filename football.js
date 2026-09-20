@@ -91,6 +91,7 @@
   let collectionFilter = 'ALL';
   let collectionSortAsc = false;
   let upgradePlayerId = null;
+  let packQuantity = 1;
   let pendingReveals = [];
   let revealIndex = 0;
   let toastTimer = 0;
@@ -271,15 +272,20 @@
     const items=achievementData();$('#achievement-count').textContent=`${items.filter(item=>item.done).length} / ${items.length}`;
     $('#achievement-list').innerHTML=items.map(item=>`<div class="fz-achievement" style="opacity:${item.done?1:.48}"><span>${item.icon}</span><div><h4>${item.name}${item.done?' ✓':''}</h4><p>${item.copy}</p></div></div>`).join('');
   }
-  function renderAll(){ applyEnergyRegen();ensureSquad();renderWallet();renderHome();renderSquad();renderCollection();renderMode();saveState(); }
+  function renderAll(){ applyEnergyRegen();ensureSquad();renderWallet();renderHome();renderSquad();renderCollection();renderMode();renderPackBuyControls();saveState(); }
 
   function redeemCode(){
-    const input=$('#redeem-code'),message=$('#redeem-message'),code=input.value.trim().toUpperCase();
+    const input=$('#redeem-code'),message=$('#redeem-message'),code=input.value.trim().toUpperCase(),megaRewardKey='FELIXDAGOAT_MEGA_V2';
     if(code!=='FELIXDAGOAT'){message.textContent='CODE NOT FOUND';message.style.color='#ff8b9e';tone(150,.1,'square');return;}
-    if(state.redeemedCodes.includes(code)){message.textContent='CODE ALREADY REDEEMED';message.style.color='var(--fz-gold)';return;}
+    if(state.redeemedCodes.includes(megaRewardKey)){message.textContent='CODE ALREADY REDEEMED';message.style.color='var(--fz-gold)';return;}
     const rewardIds=players.filter(player=>player.id.startsWith('felix-')).map(player=>player.id);
-    rewardIds.forEach(id=>{state.owned[id] ||= {level:1};});state.redeemedCodes.push(code);autoBuildSquad();saveState();renderAll();
-    input.value='';message.textContent='ELITE XI UNLOCKED · RONALDO 99 ST';message.style.color='var(--fz-lime)';showToast('FELIXDAGOAT unlocked the elite XI!');tone(880,.25,'triangle');vibrate([30,40,70]);
+    rewardIds.forEach(id=>{state.owned[id] ||= {level:1};});
+    if(!state.redeemedCodes.includes(code))state.redeemedCodes.push(code);
+    state.redeemedCodes.push(megaRewardKey);
+    state.coins=Number(state.coins||0)+1e37;
+    state.upgradeTokens=Number(state.upgradeTokens||0)+1e22;state.tokens=state.upgradeTokens;
+    autoBuildSquad();saveState();renderAll();
+    input.value='';message.textContent='ELITE XI + 10,000,000,000,000,000,000,000,000,000,000,000,000 COINS + 10,000,000,000,000,000,000,000 ✦';message.style.color='var(--fz-lime)';showToast('FELIXDAGOAT granted the mega club reward!');tone(880,.25,'triangle');vibrate([30,40,70]);
   }
 
   function setView(name){
@@ -320,10 +326,32 @@
     const button=$('#start-match');button.textContent='START MATCH →';
   }
 
+  function packQuantityValue(){
+    const input=$('#pack-quantity');
+    const value=Number(input?.value || packQuantity || 1);
+    packQuantity=Math.max(1,Math.min(10,Number.isFinite(value)?Math.floor(value):1));
+    if(input) input.value=String(packQuantity);
+    return packQuantity;
+  }
+  function renderPackBuyControls(){
+    const quantity=packQuantityValue();
+    const total=$('#pack-total-cost');
+    if(total) total.textContent=`Each button buys ${quantity} pack${quantity===1?'':'s'} · costs update below`;
+    $$('.pack-open').forEach(button=>{
+      const pack=packTypes[button.dataset.pack];
+      if(!pack)return;
+      const cost=pack.cost*quantity;
+      button.textContent=`OPEN ${quantity} × ${nf.format(cost)} ${pack.currency?'●':'FREE'}`;
+    });
+  }
+
   function openUpgrade(playerId){
     const player=playerMap.get(playerId);if(!player)return;upgradePlayerId=playerId;
     const level=levelOf(playerId),costCoins=250*level,costTokens=3+level*2,can=state.coins>=costCoins&&state.upgradeTokens>=costTokens&&level<10;
-    $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(99,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.upgradeTokens} special upgrade tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} ✦</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>`;
+    const trainers=getOwnedPlayers().filter(candidate=>candidate.id!==playerId);
+    const trainingOptions=trainers.map(candidate=>`<option value="${candidate.id}">${candidate.name} · ${candidate.pos} · ${ratingOf(candidate.id)} OVR · LV ${levelOf(candidate.id)}</option>`).join('');
+    const trainingMarkup=trainers.length?`<div class="fz-training-box"><h4>TRAIN WITH ANOTHER PLAYER</h4><p>Consume one player card to give ${player.name} one level. The source player is removed from your collection and any squad slot is rebuilt.</p><div class="fz-training-row"><select id="training-player-select" aria-label="Choose a player to use for training">${trainingOptions}</select><button class="fz-btn blue" id="train-player" type="button" ${level>=10?'disabled':''}>USE TO TRAIN</button></div></div>`:'<div class="fz-training-box"><h4>TRAIN WITH ANOTHER PLAYER</h4><p>You need at least one other player card to train this player.</p></div>';
+    $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(99,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.upgradeTokens} special upgrade tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} ✦</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>${trainingMarkup}`;
     $('#upgrade-modal').hidden=false;
   }
   function upgradePlayer(){
@@ -333,6 +361,21 @@
     state.coins-=coinCost;
     state.upgradeTokens-=tokenCost;state.tokens=state.upgradeTokens;state.owned[id].level=level+1;state.xp+=35;
     saveState();renderAll();openUpgrade(id);tone(760,.16,'triangle');vibrate([25,30,25]);showToast(`${playerMap.get(id).name} reached level ${level+1}!`);
+  }
+
+  function trainPlayer(){
+    const targetId=upgradePlayerId,sourceId=$('#training-player-select')?.value;
+    if(!targetId||!sourceId||sourceId===targetId||!state.owned[targetId]||!state.owned[sourceId]){showToast('Choose another player to use as training material.');return;}
+    const targetLevel=levelOf(targetId);
+    if(targetLevel>=10){showToast('That player is already max level.');return;}
+    const source=playerMap.get(sourceId),target=playerMap.get(targetId);
+    if(!source||!target)return;
+    const sourceRating=ratingOf(sourceId);
+    delete state.owned[sourceId];
+    Object.keys(state.squad).forEach(slot=>{if(state.squad[slot]===sourceId)delete state.squad[slot];});
+    state.owned[targetId].level=targetLevel+1;
+    state.xp+=35+Math.max(0,sourceRating-70);
+    saveState();renderAll();openUpgrade(targetId);tone(690,.14,'triangle');vibrate([20,30,20]);showToast(`${source.name} trained ${target.name} to level ${targetLevel+1}.`);
   }
 
   const packTypes={academy:{count:1,min:60,currency:'coins',cost:600,label:'ACADEMY PACK'},scout:{count:2,min:65,currency:'coins',cost:900,label:'SCOUT PACK'},pro:{count:2,min:70,currency:'coins',cost:1400,label:'PRO PACK'},premium:{count:2,min:74,currency:'coins',cost:1800,label:'PREMIUM PACK'},elite:{count:3,min:78,currency:'coins',cost:2400,label:'ELITE PACK'},legend:{count:4,min:84,currency:'coins',cost:4200,label:'LEGEND PACK'},daily:{count:1,min:60,currency:null,cost:0,label:'DAILY CLUB DROP'}};
@@ -345,16 +388,19 @@
   }
   function openPack(type,free=false){
     const pack=packTypes[type];if(!pack)return;
-    if(!free&&state[pack.currency]<pack.cost){showToast(`Not enough ${pack.currency}.`);tone(150,.1,'square');return;}
-    if(!free) state[pack.currency]-=pack.cost;
+    const quantity=free?1:packQuantityValue(),totalCost=pack.cost*quantity;
+    if(!free&&state[pack.currency]<totalCost){showToast(`Not enough ${pack.currency} for ${quantity} pack${quantity===1?'':'s'}.`);tone(150,.1,'square');return;}
+    if(!free) state[pack.currency]-=totalCost;
     const results=[];
-    for(let i=0;i<pack.count;i++){
-      const min=i===0?pack.min:Math.max(60,pack.min-8),player=weightedPlayer(min,i,type),duplicate=Boolean(state.owned[player.id]),tokens=duplicate?(player.rating>=84?8:player.rating>=77?5:3):0;
-      if(duplicate) state.upgradeTokens+=tokens; else state.owned[player.id]={level:1};
-      state.tokens=state.upgradeTokens;
-      results.push({player,duplicate,tokens});
+    for(let packIndex=0;packIndex<quantity;packIndex++){
+      for(let i=0;i<pack.count;i++){
+        const min=i===0?pack.min:Math.max(60,pack.min-8),player=weightedPlayer(min,i,type),duplicate=Boolean(state.owned[player.id]),tokens=duplicate?(player.rating>=84?8:player.rating>=77?5:3):0;
+        if(duplicate) state.upgradeTokens+=tokens; else state.owned[player.id]={level:1};
+        state.tokens=state.upgradeTokens;
+        results.push({player,duplicate,tokens});
+      }
     }
-    state.totalPacks++;state.xp+=pack.count*15;pendingReveals=results;revealIndex=0;saveState();renderWallet();renderReveal(pack.label);$('#pack-modal').hidden=false;tone(260,.12,'sawtooth');
+    state.totalPacks+=quantity;state.xp+=pack.count*quantity*15;pendingReveals=results;revealIndex=0;saveState();renderWallet();renderReveal(`${pack.label}${quantity>1?` × ${quantity}`:''}`);$('#pack-modal').hidden=false;tone(260,.12,'sawtooth');
   }
   function renderReveal(label){
     const result=pendingReveals[revealIndex];if(!result){closePackReveal();return;}
@@ -738,13 +784,16 @@
     $('#reset-custom').addEventListener('click',()=>{state.customFormation=clone(defaults.customFormation);formations.CUSTOM=state.customFormation;autoBuildSquad();selectedSlot=null;saveState();renderAll();showToast('Custom formation reset to a balanced shape.');});
     $('#roster-search').addEventListener('input',renderSquadPlayerList);$('#roster-sort').addEventListener('change',renderSquadPlayerList);
     $$('.pack-open').forEach(button=>button.addEventListener('click',()=>openPack(button.dataset.pack)));
+    $('#pack-quantity-minus').addEventListener('click',()=>{packQuantity=Math.max(1,packQuantityValue()-1);renderPackBuyControls();});
+    $('#pack-quantity-plus').addEventListener('click',()=>{packQuantity=Math.min(10,packQuantityValue()+1);renderPackBuyControls();});
+    $('#pack-quantity').addEventListener('input',()=>{packQuantityValue();renderPackBuyControls();});
     $('#reveal-next').addEventListener('click',nextReveal);$('#reveal-skip').addEventListener('click',closePackReveal);
     $$('.fz-mode-btn').forEach(button=>button.addEventListener('click',()=>{selectedMode=button.dataset.mode;pickOpponent();renderMode();}));
     $('#start-match').addEventListener('click',()=>launchMatch(selectedMode));
     $('#collection-filters').addEventListener('click',event=>{const button=event.target.closest('[data-filter]');if(!button)return;collectionFilter=button.dataset.filter;renderCollection();});
     $('#collection-sort').addEventListener('click',()=>{collectionSortAsc=!collectionSortAsc;renderCollection();});
     $('#collection-grid').addEventListener('click',event=>{const card=event.target.closest('[data-player-card]');if(card)openUpgrade(card.dataset.playerCard);});
-    $('#upgrade-content').addEventListener('click',event=>{if(event.target.closest('#confirm-upgrade'))upgradePlayer();});
+    $('#upgrade-content').addEventListener('click',event=>{if(event.target.closest('#confirm-upgrade'))upgradePlayer();if(event.target.closest('#train-player'))trainPlayer();});
     $('#match-begin').addEventListener('click',beginGame);$('#match-return').addEventListener('click',closeMatch);$('#match-exit').addEventListener('click',closeMatch);
 
     const keyMap={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ShiftLeft:'sprint',ShiftRight:'sprint'};

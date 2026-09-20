@@ -705,7 +705,7 @@
     const radius=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+radius,y);ctx.lineTo(x+w-radius,y);ctx.quadraticCurveTo(x+w,y,x+w,y+radius);ctx.lineTo(x+w,y+h-radius);ctx.quadraticCurveTo(x+w,y+h,x+w-radius,y+h);ctx.lineTo(x+radius,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-radius);ctx.lineTo(x,y+radius);ctx.quadraticCurveTo(x,y,x+radius,y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();
   }
   function drawPitch(){
-    ctx.clearRect(0,0,W,H);ctx.fillStyle='#0e7847';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e7847';ctx.fillRect(0,0,W,H);
     for(let i=0;i<10;i++){ctx.fillStyle=i%2?'rgba(255,255,255,.025)':'rgba(0,0,0,.035)';ctx.fillRect(i*W/10,0,W/10,H);}
     ctx.strokeStyle='rgba(255,255,255,.76)';ctx.lineWidth=3;ctx.strokeRect(field.left,field.top,field.right-field.left,field.bottom-field.top);ctx.beginPath();ctx.moveTo(W/2,field.top);ctx.lineTo(W/2,field.bottom);ctx.stroke();ctx.beginPath();ctx.arc(W/2,H/2,72,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(W/2,H/2,4,0,Math.PI*2);ctx.fillStyle='white';ctx.fill();
     ctx.strokeRect(field.left,150,130,240);ctx.strokeRect(field.right-130,150,130,240);ctx.strokeRect(field.left-24,field.goalTop,24,field.goalBottom-field.goalTop);ctx.strokeRect(field.right,field.goalTop,24,field.goalBottom-field.goalTop);
@@ -742,6 +742,9 @@
   }
   function drawGame(){
     if(!game)return;
+    // Clear in screen space before applying the camera translation. Clearing
+    // after the translate leaves old frames behind whenever the camera moves.
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
     const focus=game.home[game.controlled]||game.home[0];
     ctx.save();ctx.translate(W/2-focus.x,H/2-focus.y);
     drawPitch();if(game.mode==='skill')drawTarget();game.home.forEach((player,index)=>drawPlayer(player,index===game.controlled));game.away.forEach(player=>drawPlayer(player));drawBall();

@@ -38,8 +38,17 @@
   const joystick = document.getElementById("joystick");
   const joystickKnob = document.getElementById("joystick-knob");
   const touchJump = document.getElementById("touch-jump");
+  const touchAttack = document.getElementById("touch-attack");
   const touchMine = document.getElementById("touch-mine");
   const touchPlace = document.getElementById("touch-place");
+  const craftingButton = document.getElementById("crafting-button");
+  const craftingPanel = document.getElementById("crafting-panel");
+  const closeCraftingButton = document.getElementById("close-crafting");
+  const recipeButtons = Array.from(craftingPanel.querySelectorAll("[data-recipe]"));
+  const recipeStatus = {
+    brick: document.getElementById("recipe-brick-status"),
+    glass: document.getElementById("recipe-glass-status")
+  };
 
   const WORLD_X = 144;
   const WORLD_Y = 40;
@@ -68,6 +77,12 @@
   const HOTBAR_BLOCKS = hotbarButtons.map(function (button) {
     return Number(button.dataset.block);
   });
+  const inventory = Object.create(null);
+  HOTBAR_BLOCKS.forEach(function (id) { inventory[id] = 0; });
+  const RECIPES = {
+    brick: { output: 7, amount: 1, inputs: { 2: 1, 3: 2 } },
+    glass: { output: 8, amount: 1, inputs: { 6: 1, 9: 1 } }
+  };
 
   const FACE_DEFINITIONS = [
     {
@@ -126,6 +141,7 @@
   let mobBuffer = null;
   let selectedHotbarIndex = 0;
   let currentTarget = null;
+  let currentMobTarget = null;
   let ready = false;
   let running = false;
   let hasEntered = false;
@@ -136,6 +152,7 @@
   let lastWorldClockUpdate = 0;
   let lastMineTime = 0;
   let lastPlaceTime = 0;
+  let lastAttackTime = 0;
   let toastTimer = 0;
   let questStage = 0;
   let frameCounter = 0;
@@ -152,6 +169,8 @@
   let draggingMouse = false;
   let settingsOpen = false;
   let settingsWasRunning = false;
+  let craftingOpen = false;
+  let craftingWasRunning = false;
   let survivalMode = true;
   let gameOver = false;
   let audioContext = null;
@@ -199,6 +218,7 @@
     "  return fract((p.x + p.y) * p.z);",
     "}",
     "vec3 materialColor(float id, vec3 normal, vec3 position) {",
+    "  if (id > 13.5) return vec3(1.0, 0.28, 0.22);",
     "  if (id > 12.5) return vec3(0.45, 0.90, 0.48);",
     "  if (id > 11.5) return vec3(0.67, 0.33, 0.93);",
     "  if (id > 10.5) return vec3(0.95, 0.32, 0.25);",
@@ -386,7 +406,12 @@
         phase: i * 1.7,
         turnTimer: 1.2 + i * 0.18,
         kind: i % 3,
-        hitCooldown: 0
+        name: i % 3 === 0 ? "Creeper" : (i % 3 === 1 ? "Piglin" : "Slime"),
+        maxHealth: i % 3 === 1 ? 4 : (i % 3 === 0 ? 3 : 2),
+        health: i % 3 === 1 ? 4 : (i % 3 === 0 ? 3 : 2),
+        dropId: i % 3 === 0 ? 2 : (i % 3 === 1 ? 4 : 6),
+        hitCooldown: 0,
+        hitFlash: 0
       });
     }
   }
@@ -734,7 +759,7 @@
       const distance = Math.hypot(mob.x - player.x, mob.z - player.z);
       if (distance > renderDistance * CHUNK_SIZE + 8) continue;
       const bob = Math.sin(mob.phase) * 0.035;
-      const bodyMaterial = mob.kind === 0 ? 10 : (mob.kind === 1 ? 11 : 12);
+      const bodyMaterial = mob.hitFlash > 0 ? 14 : (mob.kind === 0 ? 10 : (mob.kind === 1 ? 11 : 12));
       appendBox(vertices, mob.x - 0.36, mob.y + bob, mob.z - 0.36, 0.72, 0.92, 0.72, bodyMaterial);
       appendBox(vertices, mob.x - 0.29, mob.y + 0.9 + bob, mob.z - 0.29, 0.58, 0.5, 0.58, bodyMaterial);
       appendBox(vertices, mob.x - 0.28, mob.y - 0.12 + bob, mob.z - 0.28, 0.2, 0.28, 0.2, bodyMaterial);
@@ -881,6 +906,8 @@
     for (let i = 0; i < mobs.length; i += 1) {
       const mob = mobs[i];
       mob.phase += deltaTime * 5;
+      mob.hitCooldown = Math.max(0, mob.hitCooldown - deltaTime);
+      mob.hitFlash = Math.max(0, mob.hitFlash - deltaTime);
       mob.turnTimer -= deltaTime;
       if (mob.turnTimer <= 0) {
         const turn = (hash2(Math.floor(worldElapsed * 3) + i * 13, i * 19) - 0.5) * 1.8;
@@ -1017,10 +1044,36 @@
     return null;
   }
 
+  function findMobTarget(origin, direction, maxDistance) {
+    let nearest = null;
+    for (let i = 0; i < mobs.length; i += 1) {
+      const mob = mobs[i];
+      const toMobX = mob.x - origin[0];
+      const toMobY = mob.y + 0.76 - origin[1];
+      const toMobZ = mob.z - origin[2];
+      const distance = toMobX * direction[0] + toMobY * direction[1] + toMobZ * direction[2];
+      if (distance < 0 || distance > maxDistance) continue;
+      const closestX = toMobX - direction[0] * distance;
+      const closestY = toMobY - direction[1] * distance;
+      const closestZ = toMobZ - direction[2] * distance;
+      if (Math.hypot(closestX, closestY, closestZ) > 0.72) continue;
+      if (!nearest || distance < nearest.distance) {
+        nearest = { mob: mob, distance: distance };
+      }
+    }
+    return nearest;
+  }
+
   function updateTarget() {
     const direction = getLookDirection();
     const origin = [player.x, player.y + EYE_HEIGHT + player.bobAmount, player.z];
     currentTarget = raycast(origin, direction, REACH);
+    currentMobTarget = findMobTarget(origin, direction, REACH);
+    if (currentMobTarget && (!currentTarget || currentMobTarget.distance <= currentTarget.distance + 0.08)) {
+      const mob = currentMobTarget.mob;
+      targetLabel.textContent = mob.name + " - " + mob.health + "/" + mob.maxHealth + " HP";
+      return;
+    }
     if (!currentTarget) {
       targetLabel.textContent = "Nothing in reach";
       return;
@@ -1059,12 +1112,120 @@
     awardArcadePoints(1, "Voxel Frontier: mining streak");
   }
 
+  function inventoryCount(id) {
+    return Math.max(0, Number(inventory[id] || 0));
+  }
+
+  function addInventory(id, amount) {
+    inventory[id] = inventoryCount(id) + amount;
+    updateInventoryUi();
+    updateCraftingUi();
+  }
+
+  function removeInventory(id, amount) {
+    const next = inventoryCount(id) - amount;
+    if (next < 0) return false;
+    inventory[id] = next;
+    updateInventoryUi();
+    updateCraftingUi();
+    return true;
+  }
+
+  function updateInventoryUi() {
+    for (let i = 0; i < hotbarButtons.length; i += 1) {
+      const button = hotbarButtons[i];
+      const id = Number(button.dataset.block);
+      const count = inventoryCount(id);
+      const countEl = button.querySelector(".item-count");
+      if (countEl) countEl.textContent = String(count);
+      button.classList.toggle("empty", count === 0);
+      const block = BLOCKS[id];
+      button.setAttribute("aria-label", "Select " + (block ? block.name : "block") + " block (" + count + " available)");
+    }
+  }
+
+  function canCraft(recipe) {
+    const keys = Object.keys(recipe.inputs);
+    for (let i = 0; i < keys.length; i += 1) {
+      const id = Number(keys[i]);
+      if (inventoryCount(id) < recipe.inputs[id]) return false;
+    }
+    return true;
+  }
+
+  function updateCraftingUi() {
+    for (let i = 0; i < recipeButtons.length; i += 1) {
+      const button = recipeButtons[i];
+      const recipe = RECIPES[button.dataset.recipe];
+      if (!recipe) continue;
+      const available = canCraft(recipe);
+      button.disabled = !available;
+      const status = recipeStatus[button.dataset.recipe];
+      if (status) status.textContent = available ? "READY" : "NEED INGREDIENTS";
+    }
+  }
+
+  function craftRecipe(key) {
+    if (!ready || !hasEntered) return;
+    const recipe = RECIPES[key];
+    if (!recipe || !canCraft(recipe)) {
+      showToast("Mine the listed ingredients first.");
+      return;
+    }
+    const keys = Object.keys(recipe.inputs);
+    for (let i = 0; i < keys.length; i += 1) {
+      removeInventory(Number(keys[i]), recipe.inputs[keys[i]]);
+    }
+    addInventory(recipe.output, recipe.amount);
+    stats.score += 8;
+    updateScore();
+    showToast("Crafted " + recipe.amount + " " + BLOCKS[recipe.output].name + ". Ingredients reduced exactly.");
+    playTone(430, 0.08, "triangle", 0.02);
+    updateCraftingUi();
+  }
+
+  function attackMob() {
+    if (!ready || !hasEntered) return;
+    const now = performance.now();
+    if (now - lastAttackTime < 260) return;
+    lastAttackTime = now;
+    updateTarget();
+    if (!currentMobTarget || (currentTarget && currentTarget.distance + 0.08 < currentMobTarget.distance)) {
+      showToast("Aim at a mob to attack.");
+      return;
+    }
+    const mob = currentMobTarget.mob;
+    if (mob.hitCooldown > 0) return;
+    mob.health -= 1;
+    mob.hitCooldown = 0.26;
+    mob.hitFlash = 0.2;
+    stats.score += 5;
+    playTone(190, 0.05, "square", 0.02);
+    if (mob.health <= 0) {
+      const mobIndex = mobs.indexOf(mob);
+      if (mobIndex >= 0) mobs.splice(mobIndex, 1);
+      addInventory(mob.dropId, 1);
+      stats.score += 25;
+      awardArcadePoints(2, "Voxel Frontier: mob defeated");
+      showToast(mob.name + " defeated! +1 " + BLOCKS[mob.dropId].name);
+      playTone(520, 0.09, "triangle", 0.025);
+    } else {
+      showToast(mob.name + " hit! " + mob.health + "/" + mob.maxHealth + " HP");
+    }
+    updateScore();
+    updateTarget();
+  }
+
   function mineBlock() {
     if (!running || !ready) return;
     const now = performance.now();
     if (now - lastMineTime < 135) return;
     lastMineTime = now;
     updateTarget();
+    if (currentMobTarget && (!currentTarget || currentMobTarget.distance <= currentTarget.distance + 0.08)) {
+      attackMob();
+      return;
+    }
     if (!currentTarget) {
       playTone(90, 0.035, "square", 0.012);
       return;
@@ -1078,6 +1239,7 @@
     const id = currentTarget.block;
     const block = BLOCKS[id] || BLOCKS[3];
     if (!changeBlock(currentTarget.x, currentTarget.y, currentTarget.z, 0)) return;
+    addInventory(id, 1);
     stats.mined += 1;
     stats.score += block.value;
     if (id === 9) {
@@ -1111,7 +1273,12 @@
       return;
     }
     const id = HOTBAR_BLOCKS[selectedHotbarIndex];
+    if (inventoryCount(id) < 1) {
+      showToast("No " + BLOCKS[id].name + " blocks. Mine one first.");
+      return;
+    }
     if (!changeBlock(location.x, location.y, location.z, id)) return;
+    removeInventory(id, 1);
     stats.placed += 1;
     stats.score += 3;
     playTone(id === 8 ? 420 : 230, 0.04, "square", 0.016);
@@ -1238,6 +1405,22 @@
     }
   }
 
+  function setCraftingOpen(open) {
+    craftingOpen = open;
+    craftingPanel.hidden = !open;
+    if (open) {
+      craftingWasRunning = running;
+      running = false;
+      resetInput();
+      updateCraftingUi();
+      if (document.pointerLockElement === canvas && document.exitPointerLock) document.exitPointerLock();
+    } else if (craftingWasRunning && hasEntered && !gameOver) {
+      running = true;
+      overlay.hidden = true;
+      lastFrameTime = performance.now();
+    }
+  }
+
   function initializeAudio() {
     if (audioContext) return;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -1276,7 +1459,8 @@
       hotbarButtons[i].setAttribute("aria-pressed", i === selectedHotbarIndex ? "true" : "false");
     }
     heldBlock.style.backgroundColor = BLOCKS[id].hand;
-    if (running) showToast(BLOCKS[id].name + " selected");
+    heldBlock.style.opacity = inventoryCount(id) > 0 ? ".92" : ".35";
+    if (running) showToast(BLOCKS[id].name + " selected (" + inventoryCount(id) + " available)");
   }
 
   function respawnPlayer(showMessage) {
@@ -1373,7 +1557,7 @@
     overlayTitle.innerHTML = "VOXEL<br><span>FRONTIER</span>";
     overlayCopy.textContent = "Your world is waiting exactly as you left it. Re-enter to keep mining and building.";
     enterButton.textContent = "RESUME WORLD";
-    controlLine.innerHTML = "<span>ESC TO PAUSE</span><span>R TO RESPAWN</span><span>1-8 BLOCKS</span>";
+    controlLine.innerHTML = "<span>ESC TO PAUSE</span><span>F TO ATTACK</span><span>C TO CRAFT</span><span>1-8 BLOCKS</span>";
     overlay.hidden = false;
   }
 
@@ -1394,7 +1578,7 @@
     if (touchMode || !canvas.requestPointerLock) {
       running = true;
       overlay.hidden = true;
-      showToast(touchMode ? "Drag the world to look around." : "Drag to look - click to mine.");
+      showToast(touchMode ? "Drag to look. Attack, mine, place, and craft." : "Drag to look - click to mine or hit.");
       return;
     }
 
@@ -1437,6 +1621,19 @@
     closeSettingsButton.addEventListener("click", function () {
       setSettingsOpen(false);
     });
+    craftingButton.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      setCraftingOpen(!craftingOpen);
+    });
+    closeCraftingButton.addEventListener("click", function () {
+      setCraftingOpen(false);
+    });
+    recipeButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        craftRecipe(button.dataset.recipe);
+      });
+    });
     survivalToggle.addEventListener("change", function () {
       survivalMode = survivalToggle.checked;
       if (survivalMode) {
@@ -1474,6 +1671,15 @@
       if (/^Digit[1-8]$/.test(event.code)) {
         selectHotbar(Number(event.code.slice(5)) - 1);
       }
+      if (event.code === "KeyF" && running) attackMob();
+      if (event.code === "KeyC" && hasEntered && !gameOver) {
+        event.preventDefault();
+        setCraftingOpen(!craftingOpen);
+      }
+      if (event.code === "Escape" && craftingOpen) {
+        event.preventDefault();
+        setCraftingOpen(false);
+      }
       if (event.code === "KeyR" && running) respawnPlayer(true);
     });
 
@@ -1499,7 +1705,7 @@
         running = true;
         overlay.hidden = true;
         lastFrameTime = performance.now();
-      } else if (hasEntered && !document.hidden && !settingsOpen && !gameOver) {
+      } else if (hasEntered && !document.hidden && !settingsOpen && !craftingOpen && !gameOver) {
         showPauseOverlay();
       }
     });
@@ -1596,6 +1802,11 @@
       event.stopPropagation();
       jumpQueued = true;
     });
+    touchAttack.addEventListener("pointerdown", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      attackMob();
+    });
     touchMine.addEventListener("pointerdown", function (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -1611,7 +1822,7 @@
       if (document.hidden) {
         running = false;
         resetInput();
-      } else if (hasEntered && touchMode && !settingsOpen && !gameOver) {
+      } else if (hasEntered && touchMode && !settingsOpen && !craftingOpen && !gameOver) {
         running = true;
         overlay.hidden = true;
         lastFrameTime = performance.now();
@@ -1657,17 +1868,19 @@
       overlayKicker.textContent = "MESHING " + (CHUNKS_X * CHUNKS_Z) + " WORLD CHUNKS";
       initializeChunks();
       respawnPlayer(false);
+      updateInventoryUi();
       selectHotbar(0);
       updateScore();
       updateQuest();
       updateTarget();
+      updateCraftingUi();
       setupControls();
       ready = true;
       enterButton.disabled = false;
       enterButton.textContent = hasTouchPointer ? "TAP OR CLICK TO EXPLORE" : "ENTER WORLD";
       overlayKicker.textContent = WORLD_X + " x " + WORLD_Z + " WORLD READY";
       if (isCoarsePointer) {
-        controlLine.innerHTML = "<span>LEFT PAD TO MOVE</span><span>DRAG TO LOOK</span><span>BUTTONS TO BUILD</span>";
+        controlLine.innerHTML = "<span>LEFT PAD TO MOVE</span><span>DRAG TO LOOK</span><span>ATTACK / MINE / PLACE</span><span>CRAFT WITH C</span>";
       }
       resizePending = true;
       lastFrameTime = performance.now();

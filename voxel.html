@@ -149,6 +149,59 @@
     .settings-panel output { min-width: 34px; text-align: right; font-weight: 700; }
     .settings-panel button { width: 100%; margin-top: 8px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); cursor: pointer; }
 
+    .crafting-button {
+      position: absolute;
+      top: 128px;
+      right: 16px;
+      z-index: 6;
+      padding: 8px 10px;
+      border: 2px solid white;
+      background: rgba(20, 33, 61, .78);
+      color: white;
+      box-shadow: 3px 3px 0 rgba(20, 33, 61, .5);
+      cursor: pointer;
+      pointer-events: auto;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    .crafting-panel {
+      position: absolute;
+      top: 164px;
+      right: 16px;
+      z-index: 14;
+      width: min(330px, calc(100vw - 32px));
+      padding: 18px;
+      border: 3px solid var(--ink);
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 7px 7px 0 rgba(20, 33, 61, .55);
+      pointer-events: auto;
+      text-shadow: none;
+    }
+
+    .crafting-panel[hidden] { display: none; }
+    .crafting-panel h2 { margin: 0 0 5px; font-size: 20px; }
+    .crafting-panel p { margin: 0 0 13px; color: #536078; font: 400 13px Georgia, serif; line-height: 1.35; }
+    .recipe-button {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 10px;
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border: 2px solid var(--ink);
+      background: white;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .recipe-button span { color: #536078; font: 400 12px Georgia, serif; }
+    .recipe-button strong { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 12px; }
+    .recipe-button:disabled { cursor: not-allowed; opacity: .48; filter: grayscale(1); }
+    .crafting-panel > button:last-child { width: 100%; margin-top: 8px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); cursor: pointer; }
+
     .hud-label {
       display: block;
       margin-bottom: 3px;
@@ -280,6 +333,22 @@
       font: 700 9px Arial, sans-serif;
     }
 
+    .item-count {
+      position: absolute;
+      right: 3px;
+      bottom: 2px;
+      min-width: 16px;
+      padding: 1px 3px;
+      border: 1px solid rgba(255, 255, 255, .75);
+      background: rgba(0, 0, 0, .66);
+      color: white;
+      font-size: 10px;
+      line-height: 12px;
+      text-align: center;
+    }
+
+    .hotbar button.empty .item-count { color: #ffcfca; }
+
     .block-swatch {
       width: 27px;
       height: 27px;
@@ -410,7 +479,9 @@
       .world-stats { top: 10px; left: 10px; }
       .survival-panel { top: 72px; left: 10px; min-width: 150px; }
       .settings-button { top: 72px; right: 10px; }
-      .settings-panel { top: 108px; right: 10px; }
+      .crafting-button { top: 108px; right: 10px; }
+      .settings-panel { top: 144px; right: 10px; }
+      .crafting-panel { top: 144px; right: 10px; }
       .quest-card { top: 72px; min-width: 230px; padding: 7px 10px; }
       .held-block { display: none; }
       .score-pill { top: 68px; right: 10px; bottom: auto; }
@@ -482,11 +553,13 @@
 
       .touch-actions .jump-button {
         grid-column: 2;
+        grid-row: 1;
         background: rgba(37, 99, 235, .82);
       }
 
-      .touch-actions .mine-button { background: rgba(255, 90, 78, .86); }
-      .touch-actions .place-button { background: rgba(33, 181, 115, .86); }
+      .touch-actions .attack-button { grid-column: 1; grid-row: 1; background: rgba(255, 150, 55, .9); }
+      .touch-actions .mine-button { grid-column: 1; grid-row: 2; background: rgba(255, 90, 78, .86); }
+      .touch-actions .place-button { grid-column: 2; grid-row: 2; background: rgba(33, 181, 115, .86); }
     }
 
     @media (max-width: 560px) {
@@ -501,7 +574,9 @@
       .score-pill { top: 57px; }
       .survival-panel { top: 105px; }
       .settings-button { top: 105px; }
+      .crafting-button { top: 105px; }
       .settings-panel { top: 141px; }
+      .crafting-panel { top: 141px; }
       .control-line { flex-direction: column; gap: 4px; }
       .start-card { box-shadow: 8px 8px 0 var(--red); }
     }
@@ -547,21 +622,22 @@
       </div>
 
       <button class="settings-button" id="settings-button" type="button">SETTINGS</button>
+      <button class="crafting-button" id="crafting-button" type="button">CRAFT <kbd>C</kbd></button>
 
       <div class="crosshair" aria-hidden="true"></div>
       <div class="target-label" id="target-label">Nothing in reach</div>
       <div class="score-pill">SCORE <strong id="score">0000</strong> / BEST <strong id="best-score">0000</strong></div>
-      <div class="desktop-hint">WASD MOVE - SPACE JUMP - SHIFT SPRINT - CLICK MINE - RIGHT CLICK PLACE - 1-8 BLOCKS</div>
+      <div class="desktop-hint">WASD MOVE - SPACE JUMP - SHIFT SPRINT - CLICK MINE / HIT - RIGHT CLICK PLACE - F ATTACK - C CRAFT - 1-8 SELECT</div>
 
       <div class="hotbar" id="hotbar" aria-label="Block hotbar">
-        <button type="button" data-block="1" aria-label="Select grass block" aria-pressed="true"><kbd>1</kbd><span class="block-swatch block-grass"></span></button>
-        <button type="button" data-block="2" aria-label="Select dirt block" aria-pressed="false"><kbd>2</kbd><span class="block-swatch block-dirt"></span></button>
-        <button type="button" data-block="3" aria-label="Select stone block" aria-pressed="false"><kbd>3</kbd><span class="block-swatch block-stone"></span></button>
-        <button type="button" data-block="4" aria-label="Select wood block" aria-pressed="false"><kbd>4</kbd><span class="block-swatch block-wood"></span></button>
-        <button type="button" data-block="6" aria-label="Select sand block" aria-pressed="false"><kbd>5</kbd><span class="block-swatch block-sand"></span></button>
-        <button type="button" data-block="7" aria-label="Select brick block" aria-pressed="false"><kbd>6</kbd><span class="block-swatch block-brick"></span></button>
-        <button type="button" data-block="8" aria-label="Select glass block" aria-pressed="false"><kbd>7</kbd><span class="block-swatch block-glass"></span></button>
-        <button type="button" data-block="9" aria-label="Select crystal block" aria-pressed="false"><kbd>8</kbd><span class="block-swatch block-crystal"></span></button>
+        <button type="button" data-block="1" aria-label="Select grass block" aria-pressed="true"><kbd>1</kbd><span class="block-swatch block-grass"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="2" aria-label="Select dirt block" aria-pressed="false"><kbd>2</kbd><span class="block-swatch block-dirt"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="3" aria-label="Select stone block" aria-pressed="false"><kbd>3</kbd><span class="block-swatch block-stone"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="4" aria-label="Select wood block" aria-pressed="false"><kbd>4</kbd><span class="block-swatch block-wood"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="6" aria-label="Select sand block" aria-pressed="false"><kbd>5</kbd><span class="block-swatch block-sand"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="7" aria-label="Select brick block" aria-pressed="false"><kbd>6</kbd><span class="block-swatch block-brick"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="8" aria-label="Select glass block" aria-pressed="false"><kbd>7</kbd><span class="block-swatch block-glass"></span><span class="item-count">0</span></button>
+        <button type="button" data-block="9" aria-label="Select crystal block" aria-pressed="false"><kbd>8</kbd><span class="block-swatch block-crystal"></span><span class="item-count">0</span></button>
       </div>
 
       <div class="held-block" id="held-block" aria-hidden="true"></div>
@@ -574,6 +650,7 @@
       </div>
       <div class="touch-actions">
         <button type="button" class="jump-button" id="touch-jump">JUMP</button>
+        <button type="button" class="attack-button" id="touch-attack">ATTACK</button>
         <button type="button" class="mine-button" id="touch-mine">MINE</button>
         <button type="button" class="place-button" id="touch-place">PLACE</button>
       </div>
@@ -588,6 +665,14 @@
       <button id="close-settings" type="button">DONE</button>
     </section>
 
+    <section class="crafting-panel" id="crafting-panel" hidden aria-label="Crafting recipes">
+      <h2>CRAFTING</h2>
+      <p>Mine ingredients first. Recipes consume only the listed amounts.</p>
+      <button type="button" class="recipe-button" data-recipe="brick"><span>BRICK</span><strong id="recipe-brick-status">2 STONE + 1 DIRT</strong><span>2 stone + 1 dirt → 1 brick</span></button>
+      <button type="button" class="recipe-button" data-recipe="glass"><span>GLASS</span><strong id="recipe-glass-status">1 SAND + 1 CRYSTAL</strong><span>1 sand + 1 crystal → 1 glass</span></button>
+      <button type="button" id="close-crafting">DONE</button>
+    </section>
+
     <div class="world-overlay" id="world-overlay">
       <div class="start-card">
         <p class="eyebrow" id="overlay-kicker">GENERATING 144 x 144 WORLD</p>
@@ -595,7 +680,7 @@
         <p id="overlay-copy">Explore a huge procedural landscape, survive roaming mobs, uncover crystal veins, build a shelter, and chase a new high score. The whole world runs directly in your browser.</p>
         <button type="button" id="enter-world" disabled>BUILDING WORLD...</button>
         <div class="control-line" id="control-line">
-          <span>WASD TO MOVE</span><span>MOUSE TO LOOK</span><span>CLICK TO MINE</span>
+          <span>WASD TO MOVE</span><span>MOUSE TO LOOK</span><span>CLICK TO MINE / F TO ATTACK</span><span>C TO CRAFT</span>
         </div>
       </div>
     </div>

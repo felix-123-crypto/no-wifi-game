@@ -46,3 +46,8 @@ body:not(.retro-theme) .fz-topbar,body:not(.retro-theme) .fz-sidebar,body:not(.r
 body:not(.retro-theme).voxel-body .topbar{background:rgba(5,8,6,.96)!important}body:not(.retro-theme) .hud-panel,body:not(.retro-theme) .pause-card,body:not(.retro-theme) .settings-panel{background:rgba(5,8,6,.9)!important;border-color:#39ff88!important;color:#eafff1!important}
 /* Geometry Dash level picker helper text */
 .gd-level-help{display:block;margin-top:8px;color:#aeb9d9;font-size:11px;letter-spacing:.02em;font-weight:600}
+
+/* Shared arcade logo */
+.brand-logo{width:34px;height:34px;display:block;flex:0 0 auto;object-fit:contain;border-radius:8px}
+.fz-brand-logo{width:39px;height:39px;display:block;flex:0 0 auto;object-fit:contain;border-radius:10px;filter:drop-shadow(0 0 12px rgba(57,255,136,.2))}
+@media(max-width:800px){.brand-logo{width:31px;height:31px}.fz-brand-logo{width:34px;height:34px}}

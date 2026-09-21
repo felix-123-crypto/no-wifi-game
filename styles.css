@@ -51,3 +51,9 @@ body:not(.retro-theme).voxel-body .topbar{background:rgba(5,8,6,.96)!important}b
 .brand-logo{width:34px;height:34px;display:block;flex:0 0 auto;object-fit:contain;border-radius:8px}
 .fz-brand-logo{width:39px;height:39px;display:block;flex:0 0 auto;object-fit:contain;border-radius:10px;filter:drop-shadow(0 0 12px rgba(57,255,136,.2))}
 @media(max-width:800px){.brand-logo{width:31px;height:31px}.fz-brand-logo{width:34px;height:34px}}
+@media (pointer:coarse){
+  .touch-controls{display:flex;flex-wrap:wrap;touch-action:manipulation;gap:8px}
+  .touch-controls button{min-width:52px;min-height:48px;border-radius:10px;touch-action:manipulation}
+  .touch-controls.jump-only button:not([data-key="Space"]){display:none}
+  .touch-controls.jump-only button[data-key="Space"]{min-width:120px;font-size:11px;letter-spacing:.08em}
+}

@@ -4,6 +4,15 @@ const game=new URLSearchParams(location.search).get('game')||'pacman';let runnin
 let gdLevel='stereo',practiceMode=false;const gdConfigs={stereo:{label:'STEREO MADNESS',speed:255,next:1.35,finish:460,platforms:false},backtrack:{label:'BACK ON TRACK',speed:300,next:1.12,finish:145,platforms:true},polargeist:{label:'POLARGEIST',speed:340,next:.92,finish:170,platforms:true}};const gdOptions=document.querySelector('#gd-options');if(game==='gd'&&gdOptions){gdOptions.hidden=false;document.querySelector('#gd-level').addEventListener('change',e=>{gdLevel=e.target.value;});document.querySelector('#gd-practice').addEventListener('change',e=>{practiceMode=e.target.checked;});}
 const meta={pacman:['Maze Muncher','ARCADE CLASSIC','Clear the maze. Dodge the ghosts. Chase a new high score.','Use arrow keys or WASD. Collect every dot while keeping clear of roaming ghosts.'],blocks:['Block Quest','CREATIVE MODE','Dig deep, gather gems, and build your way to the sky.','Move with arrows or WASD. Click blocks to mine them, then press Space to place a block nearby.'],football:['Pocket Football','SPORTS CHALLENGE','Aim your shot. Beat the keeper. Find the top corner.','Move the target with arrows or WASD, then press Space or tap the game to shoot.'],dino:['Chrome Dino','ARCADE RUNNER','Jump the cacti and survive as the desert gets faster.','Press Space, ArrowUp, or W to jump. The longer you survive, the faster it gets.'],gd:['Cube Rush','GEOMETRY RUNNER','Choose a premade level, chase 100%, or practice from checkpoints.','Pick Stereo Madness, Back on Track, Polargeist, or Wave Run. Hold Space, ArrowUp, or W to control your jump or wave.']};
 [titleEl.textContent,kickEl.textContent,subEl.textContent,howEl.textContent]=meta[game]||meta.pacman;document.title=`${titleEl.textContent} — Recess Arcade`;
+const touchPad=document.querySelector('#touch');
+if(touchPad){
+  const touchButtons=[...touchPad.querySelectorAll('button')];
+  const jumpOnly=['dino','gd'].includes(game);
+  touchPad.classList.toggle('jump-only',jumpOnly);
+  if(jumpOnly){const jumpButton=touchPad.querySelector('[data-key="Space"]');if(jumpButton){jumpButton.textContent='JUMP';jumpButton.setAttribute('aria-label','Hold to jump');}}
+  if(game==='blocks'){const placeButton=touchPad.querySelector('[data-key="Space"]');if(placeButton){placeButton.textContent='PLACE';placeButton.setAttribute('aria-label','Place block');}}
+  touchButtons.forEach(button=>{button.addEventListener('pointercancel',()=>{keys[button.dataset.key]=false;});});
+}
 let best=Number(localStorage.getItem(`recess-${game}`)||0);bestEl.textContent=String(best).padStart(3,'0');
 function setScore(n){score=n;scoreEl.textContent=String(n).padStart(3,'0');if(n>best){best=n;bestEl.textContent=String(best).padStart(3,'0');localStorage.setItem(`recess-${game}`,best)}}
 function end(msg){running=false;cancelAnimationFrame(raf);document.querySelector('#overlay-title').textContent='ROUND OVER';document.querySelector('#overlay-copy').textContent=msg;startBtn.textContent='PLAY AGAIN';overlay.hidden=false}

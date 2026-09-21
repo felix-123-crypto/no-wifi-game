@@ -5,6 +5,8 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const STORAGE_KEY = 'recess-football-career-v1';
   const nf = new Intl.NumberFormat('en-US');
+  const isTouchDevice = Boolean(window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+  document.documentElement.classList.toggle('touch-device', isTouchDevice);
 
   const players = [
     {id:'amina-kone',name:'Amina Kone',nation:'Mali',pos:'ST',group:'ATT',rating:82,pace:86,shot:84,pass:72,def:34,color:'#c87952'},
@@ -520,7 +522,9 @@
     applyEnergyRegen();const detail=modeDetails[mode];
     saveState();renderWallet();selectedMode=mode;pickOpponent();
     $('#match-screen').hidden=false;document.body.style.overflow='hidden';$('#home-name').textContent=(countryTeams[state.country]||countryTeams.Mali).short;$('#away-name').textContent=mode==='skill'?'TARGETS':currentOpponent.name.split(' ')[0].toUpperCase();
-    $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':mode==='manager'?'📋':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':mode==='manager'?'MANAGER MODE':'READY?';$('#match-overlay-copy').textContent=mode==='skill'?'One player only. Move into range and shoot at the glowing target. Score quickly to build a combo.':mode==='manager'?'Your XI follows its formation automatically. Use the TEAM PLAN bar to switch passing, offence, or defence, and the AI will switch to the best player for the ball.':'Real rules are active: throw-ins, corners, goal kicks, kickoffs, fouls, offside, and own goals. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.';$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START SOLO CHALLENGE':mode==='manager'?'START MANAGING':'KICK OFF';$('#match-begin').dataset.result='';
+    const mobileHint=mode==='skill'?'Use the on-screen pad to move and tap SHOOT at the target.':mode==='manager'?'Use the on-screen pad and action buttons. TEAM PLAN controls passing, offence, and defence.':'Use the on-screen pad to move. Tap PASS, SHOOT, STEAL, or SWITCH; hold SPRINT.';
+    const desktopHint=mode==='skill'?'One player only. Move into range and shoot at the glowing target. Score quickly to build a combo.':mode==='manager'?'Your XI follows its formation automatically. Use the TEAM PLAN bar to switch passing, offence, or defence, and the AI will switch to the best player for the ball.':'Real rules are active: throw-ins, corners, goal kicks, kickoffs, fouls, offside, and own goals. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.';
+    $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':mode==='manager'?'📋':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':mode==='manager'?'MANAGER MODE':'READY?';$('#match-overlay-copy').textContent=isTouchDevice?mobileHint:desktopHint;$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START SOLO CHALLENGE':mode==='manager'?'START MANAGING':'KICK OFF';$('#match-begin').dataset.result='';
     const tacticBar=$('#manager-tactic-bar');if(tacticBar){tacticBar.hidden=mode!=='manager';if(mode==='manager')setManagerTactic(state.managerTactic,false);}
     setupGame(mode);resizeCanvas();document.documentElement.requestFullscreen?.().catch(()=>{});lastFrame=performance.now();fpsFrames=0;fpsTime=lastFrame;cancelAnimationFrame(rafId);rafId=requestAnimationFrame(gameLoop);
   }

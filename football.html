@@ -75,6 +75,24 @@
     .fz-match-body{grid-template-rows:auto minmax(0,1fr)!important;align-content:center;justify-items:center}
   </style>
   <style>
+    @media (pointer: coarse), (max-width: 800px) {
+      .fz-match-controls{display:flex;flex-wrap:wrap;gap:10px;min-height:126px;padding:10px max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-bottom));}
+      .fz-match-controls .fz-dpad{flex:0 0 auto}
+      .fz-actions{flex:1;min-width:230px;max-width:none;justify-content:center;gap:6px}
+      .fz-action{width:58px;height:58px;font-size:8px}
+      .fz-action.shoot{width:68px;height:68px}
+      .fz-match-body{min-height:0;padding:0}
+      .fz-game-frame{min-height:0}
+    }
+    @media (max-width:560px) {
+      .fz-match-controls{gap:6px;min-height:116px}
+      .fz-dpad{grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,28px)}
+      .fz-actions{min-width:190px;gap:4px}
+      .fz-action{width:47px;height:47px;font-size:7px}
+      .fz-action.shoot{width:58px;height:58px}
+    }
+  </style>
+  <style>
     .fz-training-layout{display:grid;grid-template-columns:minmax(250px,1fr) minmax(0,2fr);gap:20px}.fz-training-preview{padding:22px;align-self:start}.fz-training-preview p{font-size:12px;line-height:1.6;color:var(--fz-muted)}.fz-training-preview h2{font-size:24px}.fz-training-preview progress{width:100%;height:20px;accent-color:var(--fz-lime)}.fz-training-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fz-training-stats div{padding:12px;border:1px solid var(--fz-line);display:grid;gap:8px;font-size:12px}.fz-training-roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-content:start}.fz-training-player{display:grid;gap:10px;text-align:left;padding:18px;border:1px solid var(--fz-line);border-radius:12px;background:var(--fz-panel);color:var(--fz-text);font:inherit}.fz-training-player span,.fz-training-player small{font-size:11px;color:var(--fz-muted)}.fz-training-player b{font-size:12px;color:var(--fz-lime)}.fz-training-player.selected{outline:2px solid var(--fz-lime);background:#163523}.fz-training-player:disabled{opacity:.5;cursor:not-allowed}.fz-training-footer{margin-top:20px;padding:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}.fz-training-footer p{flex:1;min-width:200px;font-size:12px;line-height:1.6}.fz-training-footer button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:800px){.fz-training-layout{grid-template-columns:1fr}}
   </style>
 </head>

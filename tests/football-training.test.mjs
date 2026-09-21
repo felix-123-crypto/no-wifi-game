@@ -1,0 +1,63 @@
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+
+// Exercise the real career and training functions with isolated storage.
+const source=readFileSync(new URL('../football.js',import.meta.url),'utf8');
+const storage=new Map();
+const screen={hidden:true};
+const context={Intl,Date,Math,console,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},document:{querySelector:selector=>selector==='#football-canvas'?{getContext:()=>({})}:selector==='#match-screen'?screen:{},querySelectorAll:()=>[]}};
+vm.createContext(context);
+const boot=source.lastIndexOf('\n  ensureSquad();');
+assert(boot>0);
+vm.runInContext(source.slice(0,boot)+`
+  renderAll=()=>{};renderTraining=()=>{};tone=()=>{};showToast=()=>{};
+  globalThis.test={trainingProgress,trainingLocked,trainingValue,trainPlayer,loadState,statOf,xpLevelOf,
+    get state(){return state;},set state(value){state=value;},get game(){return game;},set game(value){game=value;},
+    select(target,ids){trainingTargetId=target;trainingSelection.clear();ids.forEach(id=>trainingSelection.add(id));}};
+})();`,context);
+const api=context.test;
+assert.equal(api.trainingProgress(99).level,1);
+assert.equal(api.trainingProgress(100).level,2);
+assert.equal(api.trainingProgress(274).level,2);
+assert.equal(api.trainingProgress(275).level,3);
+assert.equal(api.trainingProgress(575).needed,475);
+const target='amina-kone',a='mateo-silva',b='jae-park';
+api.state.squad={ST:a};
+assert.equal(api.trainingLocked(a),false,'a starter outside a match is usable');
+screen.hidden=false;api.game={active:true,finished:false,home:[{playerId:b}]};
+assert.equal(api.trainingLocked(b),true,'actual pitch player locked');
+assert.equal(api.trainingLocked(a),false,'off-pitch starter remains usable');
+api.game={active:false,finished:false,home:[{playerId:b}]};
+assert.equal(api.trainingLocked(b),true,'pausing does not unlock');
+api.select(target,[a,b]);
+api.trainPlayer();
+assert(api.state.owned[a]&&api.state.owned[b],'locked selection rejects whole transaction');
+api.game.finished=true;
+assert.equal(api.trainingLocked(b),false);
+screen.hidden=true;
+assert(api.trainingValue(a)>api.trainingValue(b),'higher OVR awards more XP');
+const oldLevel=api.state.owned[target].level,oldStat=api.statOf(target,'pace');
+const earned=api.trainingValue(a)+api.trainingValue(b);
+api.select(target,[a,b]);api.trainPlayer();
+assert.equal(api.state.owned[target].level,oldLevel,'training never changes upgrade level');
+assert.equal(api.state.owned[target].xp,earned);
+assert.equal(api.statOf(target,'pace'),Math.min(99,oldStat+Math.max(1,Math.min(5,Math.floor(earned/100)))));
+assert(!api.state.owned[a]&&!api.state.owned[b]);
+assert(!api.state.squad.ST,'consumed starter removed from squad');
+const after=api.state.owned[target].xp;api.trainPlayer();
+assert.equal(api.state.owned[target].xp,after,'repeat click does not award twice');
+api.state=api.loadState();
+assert(!api.state.owned[a]&&!api.state.owned[b],'consumed initial cards stay removed on reload');
+assert.equal(api.state.owned[target].xp,earned);
+storage.set('recess-shop-item-speedster','1');
+api.state.owned['shop-speedster']={level:1};
+api.select(target,['shop-speedster']);api.trainPlayer();api.state=api.loadState();
+assert(!api.state.owned['shop-speedster'],'consumed shop card stays removed');
+api.state.owned[target].xp=0;api.state.owned[target].stats={pace:50,shot:50,pass:50,def:50};
+api.state.owned[b]={level:1};api.select(target,[b]);api.trainPlayer();
+for(const key of ['pace','shot','pass','def'])assert(api.statOf(target,key)<=99);
+api.state.owned[target].stats={pace:99,shot:99,pass:99,def:99};
+api.state.owned[b]={level:1};api.select(target,[b]);api.trainPlayer();
+assert(api.state.owned[b],'maxed target must not consume cards');
+console.log('Training checks passed: increasing thresholds, pitch locks, multi-select XP, stat caps, unchanged upgrade level, and save/reload.');

@@ -78,7 +78,7 @@
   const defaults = {
     version:1,coins:4200,energy:12,maxEnergy:15,upgradeTokens:18,tokens:18,xp:540,rankPoints:320,country:'Mali',
     wins:0,draws:0,losses:0,skillBest:0,cupWins:0,cups:0,formation:'4-3-3',managerTactic:'passing',squad:{},customFormation:formations['4-3-3'].map(slot=>({...slot})),
-    owned:Object.fromEntries(initialIds.map(id => [id,{level:1}])),
+    owned:Object.fromEntries(initialIds.map(id => [id,{level:1,xp:0,stats:{}}])),
     lastDaily:'',lastEnergyAt:Date.now(),sound:true,vibration:true,totalPacks:0,totalGoals:0,redeemedCodes:[]
   };
 
@@ -91,6 +91,8 @@
   let collectionFilter = 'ALL';
   let collectionSortAsc = false;
   let upgradePlayerId = null;
+  let trainingTargetId = null;
+  const trainingSelection = new Set();
   let packQuantity = 1;
   let pendingReveals = [];
   let revealIndex = 0;
@@ -103,15 +105,20 @@
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if(!raw || raw.version !== 1) return clone(defaults);
       const loaded = {...clone(defaults),...raw};
-      loaded.owned = {...clone(defaults.owned),...(raw.owned || {})};
+      loaded.owned = raw.owned && typeof raw.owned==='object' ? raw.owned : clone(defaults.owned);
       loaded.squad = raw.squad || {};
       loaded.managerTactic = ['passing','offence','defence'].includes(raw.managerTactic) ? raw.managerTactic : defaults.managerTactic;
+      Object.entries(loaded.owned).forEach(([id,entry])=>{
+        if(!entry||typeof entry!=='object')loaded.owned[id]={level:1,xp:0,stats:{}};
+        else{entry.level=Math.max(1,Math.floor(Number(entry.level)||1));entry.xp=Math.max(0,Math.floor(Number(entry.xp)||0));entry.stats=entry.stats&&typeof entry.stats==='object'?entry.stats:{};}
+      });
       loaded.redeemedCodes=Array.isArray(raw.redeemedCodes)?raw.redeemedCodes:[];
       const legacyShards = raw.upgradeTokens == null ? Object.values(loaded.owned).reduce((sum,entry)=>sum + Math.max(0,Math.floor(Number(entry?.shards)||0)),0) : 0;
       loaded.upgradeTokens = Math.max(0,Math.floor(Number(raw.upgradeTokens ?? raw.tokens ?? defaults.upgradeTokens)||0)) + legacyShards;
       loaded.tokens = loaded.upgradeTokens;
       Object.values(loaded.owned).forEach(entry=>{if(entry && 'shards' in entry) delete entry.shards;});
-      ['shop-speedster','shop-playmaker'].forEach(id=>{if(localStorage.getItem(`recess-shop-item-${id.replace('shop-','')}`)==='1')loaded.owned[id] ||= {level:1};});
+      loaded.consumedShopPlayers=Array.isArray(raw.consumedShopPlayers)?raw.consumedShopPlayers:[];
+      ['shop-speedster','shop-playmaker'].forEach(id=>{if(!loaded.consumedShopPlayers.includes(id)&&localStorage.getItem(`recess-shop-item-${id.replace('shop-','')}`)==='1')loaded.owned[id] ||= {level:1,xp:0,stats:{}};});
       return loaded;
     }catch(error){ return clone(defaults); }
   }
@@ -130,8 +137,17 @@
   function todayKey(){ return new Date().toISOString().slice(0,10); }
   function getOwnedPlayers(){ return Object.keys(state.owned).map(id => playerMap.get(id)).filter(Boolean); }
   function levelOf(id){ return Math.max(1,Number(state.owned[id]?.level || 1)); }
-  function ratingOf(id){ const player=playerMap.get(id); return player ? Math.min(99,player.rating + levelOf(id)-1) : 0; }
-  function statOf(id,key){ const player=playerMap.get(id); return player ? Math.min(99,player[key] + levelOf(id)-1) : 0; }
+  function trainingProgress(total){
+    let level=1,xp=Math.max(0,Math.floor(Number(total)||0));
+    const cost=lv=>100+50*(lv-1)+25*(lv-1)**2;
+    while(level<99&&xp>=cost(level)){xp-=cost(level);level++;}
+    return {level,xp,needed:cost(level),max:level===99};
+  }
+  function xpLevelOf(id){return trainingProgress(state.owned[id]?.xp).level;}
+  function trainingLocked(id){return Boolean(game&&!game.finished&&!$('#match-screen').hidden&&game.home.some(player=>player.playerId===id));}
+  function trainingValue(id){return 25+Math.max(0,ratingOf(id)-50)**2;}
+  function ratingOf(id){ const player=playerMap.get(id); return player ? Math.min(99,player.rating + levelOf(id)-1 + Math.round((Number(state.owned[id]?.stats?.pace||0)+Number(state.owned[id]?.stats?.shot||0)+Number(state.owned[id]?.stats?.pass||0)+Number(state.owned[id]?.stats?.def||0))/4)) : 0; }
+  function statOf(id,key){ const player=playerMap.get(id); return player ? Math.min(99,player[key] + levelOf(id)-1 + Number(state.owned[id]?.stats?.[key]||0)) : 0; }
   function initials(name){ return name.split(' ').map(part=>part[0]).join('').slice(0,2).toUpperCase(); }
   function rarity(player){ const rating=ratingOf(player.id); return rating>=84?'elite':rating>=77?'rare':'common'; }
   function roleGroup(role){ if(role==='GK') return 'GK'; if(['LB','RB','CB'].includes(role)) return 'DEF'; if(['CM','CDM','CAM'].includes(role)) return 'MID'; return 'ATT'; }
@@ -250,7 +266,8 @@
     selectedSlot=null;saveState();renderAll();tone(560,.07,'triangle');
   }
   function playerCardHTML(player){
-    return `<button class="fz-player-card ${rarity(player)}" data-player-card="${player.id}"><span class="fz-card-top"><span><b class="fz-card-rating">${ratingOf(player.id)}</b><small class="fz-card-pos">${player.pos}</small></span><small class="fz-card-level">LV ${levelOf(player.id)}</small></span><span class="fz-card-avatar" style="background:${player.color}">${initials(player.name)}</span><h3>${player.name}</h3><p>${player.nation} • SPECIAL TOKEN UPGRADES</p><span class="fz-card-stats"><span><b>${statOf(player.id,'pace')}</b>PAC</span><span><b>${statOf(player.id,'shot')}</b>SHT</span><span><b>${statOf(player.id,'pass')}</b>PAS</span></span></button>`;
+    const locked=trainingLocked(player.id);
+    return `<button class="fz-player-card ${rarity(player)}${locked?' locked':''}" data-player-card="${player.id}"><span class="fz-card-top"><span><b class="fz-card-rating">${ratingOf(player.id)}</b><small class="fz-card-pos">${player.pos}</small></span><small class="fz-card-level">LV ${levelOf(player.id)} · XP ${xpLevelOf(player.id)}</small></span><span class="fz-card-avatar" style="background:${player.color}">${initials(player.name)}</span><h3>${player.name}</h3><p>${player.nation} • ${locked?'ON PITCH · LOCKED':'TRAINING AVAILABLE'}</p><span class="fz-card-stats"><span><b>${statOf(player.id,'pace')}</b>PAC</span><span><b>${statOf(player.id,'shot')}</b>SHT</span><span><b>${statOf(player.id,'pass')}</b>PAS</span></span></button>`;
   }
   function renderCollection(){
     let list=getOwnedPlayers().filter(player=>collectionFilter==='ALL'||player.group===collectionFilter);
@@ -280,7 +297,7 @@
     if(code!=='FELIXDAGOAT'){message.textContent='CODE NOT FOUND';message.style.color='#ff8b9e';tone(150,.1,'square');return;}
     if(state.redeemedCodes.includes(megaRewardKey)){message.textContent='CODE ALREADY REDEEMED';message.style.color='var(--fz-gold)';return;}
     const rewardIds=players.filter(player=>player.id.startsWith('felix-')).map(player=>player.id);
-    rewardIds.forEach(id=>{state.owned[id] ||= {level:1};});
+    rewardIds.forEach(id=>{state.owned[id] ||= {level:1,xp:0,stats:{}};});
     if(!state.redeemedCodes.includes(code))state.redeemedCodes.push(code);
     state.redeemedCodes.push(megaRewardKey);
     state.coins=Number(state.coins||0)+1e37;
@@ -352,9 +369,8 @@
   function openUpgrade(playerId){
     const player=playerMap.get(playerId);if(!player)return;upgradePlayerId=playerId;
     const level=levelOf(playerId),costCoins=250*level,costTokens=3+level*2,can=state.coins>=costCoins&&state.upgradeTokens>=costTokens&&level<10;
-    const trainers=getOwnedPlayers().filter(candidate=>candidate.id!==playerId);
-    const trainingOptions=trainers.map(candidate=>`<option value="${candidate.id}">${candidate.name} · ${candidate.pos} · ${ratingOf(candidate.id)} OVR · LV ${levelOf(candidate.id)}</option>`).join('');
-    const trainingMarkup=trainers.length?`<div class="fz-training-box"><h4>TRAIN WITH ANOTHER PLAYER</h4><p>Consume one player card to give ${player.name} one level. The source player is removed from your collection and any squad slot is rebuilt.</p><div class="fz-training-row"><select id="training-player-select" aria-label="Choose a player to use for training">${trainingOptions}</select><button class="fz-btn blue" id="train-player" type="button" ${level>=10?'disabled':''}>USE TO TRAIN</button></div></div>`:'<div class="fz-training-box"><h4>TRAIN WITH ANOTHER PLAYER</h4><p>You need at least one other player card to train this player.</p></div>';
+    const progress=trainingProgress(state.owned[playerId]?.xp);
+    const trainingMarkup=`<div class="fz-training-box"><h4>TRAINING XP LEVEL ${progress.level}</h4><p>${progress.max?'MAX XP LEVEL':`${nf.format(progress.xp)} / ${nf.format(progress.needed)} XP to the next breakthrough`}. Each breakthrough adds +1 to all stats, up to 99. Upgrade level stays the same.</p><button class="fz-btn blue" id="open-training" type="button">UPGRADE USING OTHER PLAYERS →</button></div>`;
     $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(99,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.upgradeTokens} special upgrade tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} ✦</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>${trainingMarkup}`;
     $('#upgrade-modal').hidden=false;
   }
@@ -367,19 +383,44 @@
     saveState();renderAll();openUpgrade(id);tone(760,.16,'triangle');vibrate([25,30,25]);showToast(`${playerMap.get(id).name} reached level ${level+1}!`);
   }
 
+  function openTraining(){
+    if(!state.owned[upgradePlayerId])return;
+    trainingTargetId=upgradePlayerId;trainingSelection.clear();
+    $('#upgrade-modal').hidden=true;setView('training');renderTraining();
+  }
+  function trainingPreview(){
+    const entry=state.owned[trainingTargetId];
+    const ids=[...trainingSelection];
+    const xp=ids.reduce((sum,id)=>sum+trainingValue(id),0);
+    const before=trainingProgress(entry?.xp),after=trainingProgress((entry?.xp||0)+xp);
+    const statGain=Math.max(1,Math.min(5,Math.floor(xp/100)||1));
+    return {ids,xp,before,after,levelGain:after.level-before.level,statGain};
+  }
+  function renderTraining(){
+    const target=playerMap.get(trainingTargetId);if(!target||!state.owned[target.id]){setView('club');return;}
+    for(const id of trainingSelection)if(!state.owned[id]||id===target.id||trainingLocked(id))trainingSelection.delete(id);
+    const preview=trainingPreview(),keys=['pace','shot','pass','def'];
+    const capped=keys.every(key=>statOf(target.id,key)>=99)||preview.before.max;
+    $('#training-heading').textContent=`TRAIN ${target.name.toUpperCase()}`;
+    $('#training-preview').innerHTML=`<p>Upgrade level ${levelOf(target.id)} · ${ratingOf(target.id)} OVR</p><h2>XP LEVEL ${preview.before.level}${preview.levelGain?` → ${preview.after.level}`:''}</h2><p>${nf.format(preview.before.xp)} / ${nf.format(preview.before.needed)} XP · +${nf.format(preview.xp)} XP selected</p><progress max="${preview.after.needed}" value="${preview.after.max?preview.after.needed:preview.after.xp}" aria-label="XP after training"></progress><p>${preview.after.max?'Maximum XP level':`After training: ${nf.format(preview.after.xp)} / ${nf.format(preview.after.needed)} XP toward level ${preview.after.level+1}`}</p><div class="fz-training-stats">${keys.map(key=>`<div><b>${key.toUpperCase()}</b><span>${statOf(target.id,key)} → ${Math.min(99,statOf(target.id,key)+preview.statGain)}</span></div>`).join('')}</div><p>Breakthrough costs increase: 100, 175, 300, 475 XP… Every training session also adds ${preview.statGain} to each stat. Stats cap at 99.</p>`;
+    $('#training-summary').textContent=capped?'All stats or XP levels are maxed.':`${preview.ids.length} selected · ${nf.format(preview.xp)} XP · +${preview.statGain} to each stat${preview.levelGain?` · XP level +${preview.levelGain}`:''}. Selected players will be permanently consumed.`;
+    $('#confirm-training').disabled=!preview.ids.length||capped;
+    const roster=getOwnedPlayers().filter(player=>player.id!==target.id).sort((a,b)=>Number(trainingLocked(a.id))-Number(trainingLocked(b.id))||ratingOf(b.id)-ratingOf(a.id));
+    $('#training-roster').innerHTML=roster.map(player=>{const locked=trainingLocked(player.id),selected=trainingSelection.has(player.id);return `<button type="button" class="fz-training-player${selected?' selected':''}" data-training-player="${player.id}" aria-pressed="${selected}" ${locked?'disabled':''}><strong>${player.name}</strong><span>${player.pos} · ${ratingOf(player.id)} OVR</span><b>${locked?'LOCKED · ON PITCH':`+${nf.format(trainingValue(player.id))} XP`}</b><small>${locked?'Substitute off or finish the match to unlock':selected?'SELECTED · click to remove':'Select for training'}</small></button>`;}).join('')||'<p>No other players owned. Open packs to add reserves.</p>';
+  }
   function trainPlayer(){
-    const targetId=upgradePlayerId,sourceId=$('#training-player-select')?.value;
-    if(!targetId||!sourceId||sourceId===targetId||!state.owned[targetId]||!state.owned[sourceId]){showToast('Choose another player to use as training material.');return;}
-    const targetLevel=levelOf(targetId);
-    if(targetLevel>=10){showToast('That player is already max level.');return;}
-    const source=playerMap.get(sourceId),target=playerMap.get(targetId);
-    if(!source||!target)return;
-    const sourceRating=ratingOf(sourceId);
-    delete state.owned[sourceId];
-    Object.keys(state.squad).forEach(slot=>{if(state.squad[slot]===sourceId)delete state.squad[slot];});
-    state.owned[targetId].level=targetLevel+1;
-    state.xp+=35+Math.max(0,sourceRating-70);
-    saveState();renderAll();openUpgrade(targetId);tone(690,.14,'triangle');vibrate([20,30,20]);showToast(`${source.name} trained ${target.name} to level ${targetLevel+1}.`);
+    const targetId=trainingTargetId,ids=[...trainingSelection];
+    if(!state.owned[targetId]||!ids.length)return;
+    // Revalidate immediately before consuming cards, including the live XI.
+    if(ids.some(id=>id===targetId||!state.owned[id]||trainingLocked(id))){showToast('A selected player is locked or unavailable.');renderTraining();return;}
+    const preview=trainingPreview(),entry=state.owned[targetId],keys=['pace','shot','pass','def'];
+    if(preview.before.max||keys.every(key=>statOf(targetId,key)>=99))return;
+    entry.xp=(entry.xp||0)+preview.xp;entry.stats ||= {};
+    keys.forEach(key=>entry.stats[key]=(Number(entry.stats[key])||0)+Math.min(preview.statGain,99-statOf(targetId,key)));
+    state.consumedShopPlayers ||= [];
+    ids.forEach(id=>{delete state.owned[id];if(id.startsWith('shop-')&&!state.consumedShopPlayers.includes(id))state.consumedShopPlayers.push(id);Object.keys(state.squad).forEach(slot=>{if(state.squad[slot]===id)delete state.squad[slot];});});
+    trainingSelection.clear();saveState();renderAll();renderTraining();
+    tone(690,.14,'triangle');showToast(`+${nf.format(preview.xp)} XP · +${preview.statGain} to each stat${preview.levelGain?` · XP level ${preview.after.level}`:''}`);
   }
 
   const packTypes={academy:{count:1,min:60,currency:'coins',cost:600,label:'ACADEMY PACK'},scout:{count:2,min:65,currency:'coins',cost:900,label:'SCOUT PACK'},pro:{count:2,min:70,currency:'coins',cost:1400,label:'PRO PACK'},premium:{count:2,min:74,currency:'coins',cost:1800,label:'PREMIUM PACK'},elite:{count:3,min:78,currency:'coins',cost:2400,label:'ELITE PACK'},legend:{count:4,min:84,currency:'coins',cost:4200,label:'LEGEND PACK'},daily:{count:1,min:60,currency:null,cost:0,label:'DAILY CLUB DROP'}};
@@ -399,7 +440,7 @@
     for(let packIndex=0;packIndex<quantity;packIndex++){
       for(let i=0;i<pack.count;i++){
         const min=i===0?pack.min:Math.max(60,pack.min-8),player=weightedPlayer(min,i,type),duplicate=Boolean(state.owned[player.id]),tokens=duplicate?(player.rating>=84?8:player.rating>=77?5:3):0;
-        if(duplicate) state.upgradeTokens+=tokens; else state.owned[player.id]={level:1};
+        if(duplicate) state.upgradeTokens+=tokens; else state.owned[player.id]={level:1,xp:0,stats:{}};
         state.tokens=state.upgradeTokens;
         results.push({player,duplicate,tokens});
       }
@@ -844,7 +885,10 @@
     $('#collection-filters').addEventListener('click',event=>{const button=event.target.closest('[data-filter]');if(!button)return;collectionFilter=button.dataset.filter;renderCollection();});
     $('#collection-sort').addEventListener('click',()=>{collectionSortAsc=!collectionSortAsc;renderCollection();});
     $('#collection-grid').addEventListener('click',event=>{const card=event.target.closest('[data-player-card]');if(card)openUpgrade(card.dataset.playerCard);});
-    $('#upgrade-content').addEventListener('click',event=>{if(event.target.closest('#confirm-upgrade'))upgradePlayer();if(event.target.closest('#train-player'))trainPlayer();});
+    $('#upgrade-content').addEventListener('click',event=>{if(event.target.closest('#confirm-upgrade'))upgradePlayer();if(event.target.closest('#open-training'))openTraining();});
+    $('#training-roster').addEventListener('click',event=>{const button=event.target.closest('[data-training-player]');if(!button)return;const id=button.dataset.trainingPlayer;if(trainingLocked(id))return;if(trainingSelection.has(id))trainingSelection.delete(id);else trainingSelection.add(id);renderTraining();});
+    $('#confirm-training').addEventListener('click',trainPlayer);
+    $('#training-clear').addEventListener('click',()=>{trainingSelection.clear();renderTraining();});
     $('#match-begin').addEventListener('click',beginGame);$('#match-return').addEventListener('click',closeMatch);$('#match-exit').addEventListener('click',closeMatch);
 
     const keyMap={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ShiftLeft:'sprint',ShiftRight:'sprint'};

@@ -74,6 +74,9 @@
   <style>
     .fz-match-body{grid-template-rows:auto minmax(0,1fr)!important;align-content:center;justify-items:center}
   </style>
+  <style>
+    .fz-training-layout{display:grid;grid-template-columns:minmax(250px,1fr) minmax(0,2fr);gap:20px}.fz-training-preview{padding:22px;align-self:start}.fz-training-preview p{font-size:12px;line-height:1.6;color:var(--fz-muted)}.fz-training-preview h2{font-size:24px}.fz-training-preview progress{width:100%;height:20px;accent-color:var(--fz-lime)}.fz-training-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fz-training-stats div{padding:12px;border:1px solid var(--fz-line);display:grid;gap:8px;font-size:12px}.fz-training-roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-content:start}.fz-training-player{display:grid;gap:10px;text-align:left;padding:18px;border:1px solid var(--fz-line);border-radius:12px;background:var(--fz-panel);color:var(--fz-text);font:inherit}.fz-training-player span,.fz-training-player small{font-size:11px;color:var(--fz-muted)}.fz-training-player b{font-size:12px;color:var(--fz-lime)}.fz-training-player.selected{outline:2px solid var(--fz-lime);background:#163523}.fz-training-player:disabled{opacity:.5;cursor:not-allowed}.fz-training-footer{margin-top:20px;padding:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}.fz-training-footer p{flex:1;min-width:200px;font-size:12px;line-height:1.6}.fz-training-footer button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:800px){.fz-training-layout{grid-template-columns:1fr}}
+  </style>
 </head>
 <body class="football-page">
   <header class="fz-topbar">
@@ -175,6 +178,11 @@
           <div class="fz-panel fz-collection"><div class="fz-filter-row" id="collection-filters"><button class="fz-filter-btn active" data-filter="ALL">ALL</button><button class="fz-filter-btn" data-filter="ATT">ATT</button><button class="fz-filter-btn" data-filter="MID">MID</button><button class="fz-filter-btn" data-filter="DEF">DEF</button><button class="fz-filter-btn" data-filter="GK">GK</button></div><div class="fz-card-grid" id="collection-grid"></div></div>
           <aside class="fz-club-side"><div class="fz-panel fz-rank-panel"><div class="fz-rank-emblem">🏅</div><p class="fz-eyebrow">SEASON DIVISION</p><h3 id="club-rank">BRONZE II</h3><p><span id="club-rp">320</span> RANK POINTS</p><div class="fz-progress"><i id="club-rank-progress"></i></div></div><div class="fz-panel"><div class="fz-panel-head"><h3>ACHIEVEMENTS</h3><span id="achievement-count">1 / 4</span></div><div class="fz-achievement-list" id="achievement-list"></div></div></aside>
         </div>
+      </section>
+      <section class="fz-view" id="view-training" aria-labelledby="training-heading">
+        <div class="fz-page-head"><div><p class="fz-eyebrow">PLAYER TRAINING</p><h1 id="training-heading">TRAIN PLAYER</h1><p>Select player cards to earn XP. Better players give more XP. Players currently on the pitch are locked, including during paused matches.</p></div><button type="button" class="fz-btn" data-view-jump="club">← BACK TO CLUB</button></div>
+        <div class="fz-training-layout"><aside class="fz-panel fz-training-preview" id="training-preview" aria-live="polite"></aside><div class="fz-training-roster" id="training-roster" aria-label="Training players"></div></div>
+        <div class="fz-panel fz-training-footer"><p id="training-summary" role="status"></p><button type="button" class="fz-btn" id="training-clear">CLEAR SELECTION</button><button type="button" class="fz-btn primary" id="confirm-training" disabled>CONSUME SELECTED & TRAIN</button></div>
       </section>
     </main>
   </div>

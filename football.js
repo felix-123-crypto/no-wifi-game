@@ -335,7 +335,10 @@
     return packQuantity;
   }
   function renderPackBuyControls(){
-    const quantity=packQuantityValue();
+    const quantity=Math.max(1,Math.min(10,Math.floor(Number(packQuantity)||1)));
+    packQuantity=quantity;
+    const quantityInput=$('#pack-quantity');
+    if(quantityInput)quantityInput.value=String(quantity);
     const total=$('#pack-total-cost');
     if(total) total.textContent=`Each button buys ${quantity} pack${quantity===1?'':'s'} · costs update below`;
     $$('.pack-open').forEach(button=>{

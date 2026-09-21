@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nowifi-game.com/sitemap.xml

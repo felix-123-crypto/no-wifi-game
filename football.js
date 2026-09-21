@@ -501,7 +501,7 @@
     if(announce&&game?.active&&game.mode==='manager')showMatchMessage(`${labels[tactic]} PLAN`);
   }
   function autoSwitchControlled(dt){
-    if(!game||game.mode==='manager'||game.mode==='skill'||game.resetTime>0)return;
+    if(!game||game.mode==='skill'||game.resetTime>0)return;
     game.autoSwitchCooldown=Math.max(0,game.autoSwitchCooldown-dt);
     const current=game.home[game.controlled];
     const owner=game.ball.owner?.team==='home'?game.home[game.ball.owner.index]:null;

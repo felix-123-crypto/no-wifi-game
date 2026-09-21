@@ -1,4 +1,4 @@
-const VERSION='recess-v26';
+const VERSION='recess-v27';
 const PRECACHE=[
   ['/', '/index.html'],
   ['/styles.css', '/styles.css'],

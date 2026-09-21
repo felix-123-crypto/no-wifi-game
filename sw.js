@@ -1,4 +1,4 @@
-const VERSION='recess-v30';
+const VERSION='recess-v31';
 const PRECACHE=[
   ['/', '/index.html'],
   ['/styles.css', '/styles.css'],
@@ -17,7 +17,8 @@ const PRECACHE=[
   ['/classics', '/classics.html'],
   ['/classics.js', '/classics.js'],
   ['/manifest.webmanifest', '/manifest.webmanifest'],
-  ['/og.png', '/og.png']
+  ['/og.png', '/og.png'],
+  ['/logo-arcade.png', '/logo-arcade.png']
 ];
 const ROUTES={
   '/':'/', '/index.html':'/',

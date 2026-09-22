@@ -329,11 +329,13 @@
     quick:{kicker:'ARCADE FOOTBALL',title:'QUICK<br>MATCH',copy:'A fast eleven-a-side match with instant coin rewards and no rank pressure. Great for learning the controls.',badges:['FREE ENTRY','COIN REWARDS','75 SECOND MATCH'],energy:0,time:75},
     manager:{kicker:'TOUCHLINE TACTICS',title:'MANAGER<br>MODE',copy:'Your squad plays automatically. Change the live team plan between passing, offence, and defence while the AI switches to the right player.',badges:['AUTO PLAY','LIVE TEAM PLANS','90 SECOND MATCH'],energy:0,time:90},
     skill:{kicker:'SOLO TRAINING',title:'TARGET<br>RUSH',copy:'Control one striker, dribble into range, and strike the glowing targets. Chain hits quickly to set a new club record.',badges:['ONE PLAYER','NO OPPONENTS','45 SECOND CHALLENGE'],energy:0,time:45},
-    tournament:{kicker:'THREE-MATCH EVENT',title:'ZERO<br>CUP',copy:'Win three matches in a row to lift the Zero Cup. A loss resets the run, so every goal matters.',badges:['FREE ENTRY','3 WINS FOR TROPHY','75 SECOND MATCH'],energy:0,time:75}
+    tournament:{kicker:'THREE-MATCH EVENT',title:'ZERO<br>CUP',copy:'Win three matches in a row to lift the Zero Cup. A loss resets the run, so every goal matters.',badges:['FREE ENTRY','3 WINS FOR TROPHY','75 SECOND MATCH'],energy:0,time:75},
+    boss:{kicker:'ELITE XI SHOWDOWN',title:'FINAL<br>BOSS',copy:'Challenge the undefeated Elite XI. Their 99 OVR squad presses harder, tackles faster, and punishes every mistake.',badges:['99 OVR ENEMY','BOSS AI','120 SECOND MATCH'],energy:0,time:120}
   };
   const opponentNames=['Northstar FC','Harbor City','Solar Athletic','Metro Rovers','Atlas Union','Pinecrest XI','Rivergate Club','Orchid Town'];
   let currentOpponent={name:'Northstar FC',ovr:71};
   function pickOpponent(){
+    if(selectedMode==='boss'){currentOpponent={name:'FINAL BOSS XI',ovr:99,boss:true};return;}
     const own=squadStats().ovr;currentOpponent={name:opponentNames[Math.floor(Math.random()*opponentNames.length)],ovr:Math.max(60,own-3+Math.floor(Math.random()*7))};
   }
   function renderMode(){
@@ -474,6 +476,7 @@
     {key:'LCM',role:'CM',shirt:8,x:360,y:142},{key:'CM',role:'CM',shirt:6,x:360,y:270},{key:'RCM',role:'CM',shirt:10,x:360,y:398},
     {key:'LW',role:'LW',shirt:11,x:610,y:145},{key:'ST',role:'ST',shirt:9,x:700,y:270},{key:'RW',role:'RW',shirt:7,x:610,y:395}
   ];
+  const finalBossRoster=['felix-buffon','felix-hernandez','felix-dias','felix-vandijk','felix-hakimi','felix-debruyne','felix-rodri','felix-bellingham','felix-mbappe','felix-ronaldo','felix-messi'];
   function activeMatchSlots(){
     const slots=formations[state.formation]||formations['4-3-3'];
     return slots.map((slot,index)=>({key:slot.key,role:slot.role,shirt:slot.role==='GK'?1:index+2,x:field.left+55+(100-slot.y)/100*(field.right-field.left-110),y:field.top+25+slot.x/100*(field.bottom-field.top-50)}));
@@ -486,12 +489,12 @@
       const mirrored=team==='away';
       const x=mirrored?field.left+field.right-slot.x:slot.x;
       const player=createPlayer(x,slot.y,team,index,slot.role,slot.shirt);
-      const template=team==='home'?(playerMap.get(state.squad[slot.key])||countryPool[index%Math.max(1,countryPool.length)]||players[index%players.length]):players[index%players.length];
+      const template=team==='home'?(playerMap.get(state.squad[slot.key])||countryPool[index%Math.max(1,countryPool.length)]||players[index%players.length]):(selectedMode==='boss'?(playerMap.get(finalBossRoster[index])||players[index%players.length]):players[index%players.length]);
       player.playerId=team==='home'?template.id:'';
-      player.rating=team==='home'?ratingOf(template.id):currentOpponent.ovr;
-      player.name=team==='home'?template.name:'Rival player';
-      player.nation=team==='home'?template.nation:'Rival';
-      player.jerseyColor=team==='home'?palette.primary:'#ff5873';player.accentColor=team==='home'?palette.accent:'#ffe2e8';
+      player.rating=team==='home'?ratingOf(template.id):(selectedMode==='boss'?Math.min(99,template.rating+1):currentOpponent.ovr);
+      player.name=team==='home'?template.name:(selectedMode==='boss'?template.name:'Rival player');
+      player.nation=team==='home'?template.nation:(selectedMode==='boss'?template.nation:'Rival');
+      player.jerseyColor=team==='home'?palette.primary:(selectedMode==='boss'?'#151515':'#ff5873');player.accentColor=team==='home'?palette.accent:(selectedMode==='boss'?'#d6b25e':'#ffe2e8');
       return player;
     });
   }
@@ -522,9 +525,9 @@
     applyEnergyRegen();const detail=modeDetails[mode];
     saveState();renderWallet();selectedMode=mode;pickOpponent();
     $('#match-screen').hidden=false;document.body.style.overflow='hidden';$('#home-name').textContent=(countryTeams[state.country]||countryTeams.Mali).short;$('#away-name').textContent=mode==='skill'?'TARGETS':currentOpponent.name.split(' ')[0].toUpperCase();
-    const mobileHint=mode==='skill'?'Use the on-screen pad to move and tap SHOOT at the target.':mode==='manager'?'Use the on-screen pad and action buttons. TEAM PLAN controls passing, offence, and defence.':'Use the on-screen pad to move. Tap PASS, SHOOT, STEAL, or SWITCH; hold SPRINT.';
-    const desktopHint=mode==='skill'?'One player only. Move into range and shoot at the glowing target. Score quickly to build a combo.':mode==='manager'?'Your XI follows its formation automatically. Use the TEAM PLAN bar to switch passing, offence, or defence, and the AI will switch to the best player for the ball.':'Real rules are active: throw-ins, corners, goal kicks, kickoffs, fouls, offside, and own goals. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.';
-    $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':mode==='manager'?'📋':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':mode==='manager'?'MANAGER MODE':'READY?';$('#match-overlay-copy').textContent=isTouchDevice?mobileHint:desktopHint;$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START SOLO CHALLENGE':mode==='manager'?'START MANAGING':'KICK OFF';$('#match-begin').dataset.result='';
+    const mobileHint=mode==='skill'?'Use the on-screen pad to move and tap SHOOT at the target.':mode==='manager'?'Use the on-screen pad and action buttons. TEAM PLAN controls passing, offence, and defence.':mode==='boss'?'Survive the Elite XI press. Tap PASS, SHOOT, STEAL, or SWITCH; hold SPRINT.':'Use the on-screen pad to move. Tap PASS, SHOOT, STEAL, or SWITCH; hold SPRINT.';
+    const desktopHint=mode==='skill'?'One player only. Move into range and shoot at the glowing target. Score quickly to build a combo.':mode==='manager'?'Your XI follows its formation automatically. Use the TEAM PLAN bar to switch passing, offence, or defence, and the AI will switch to the best player for the ball.':mode==='boss'?'The 99 OVR Elite XI is faster and more aggressive. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.':'Real rules are active: throw-ins, corners, goal kicks, kickoffs, fouls, offside, and own goals. Move with WASD or arrows; Z passes, X shoots, V steals, C switches, and Shift sprints.';
+    $('#match-overlay').hidden=false;$('#match-overlay-icon').textContent=mode==='skill'?'🎯':mode==='manager'?'📋':mode==='boss'?'☠':'⚽';$('#match-overlay-title').textContent=mode==='skill'?'TARGET RUSH':mode==='manager'?'MANAGER MODE':mode==='boss'?'FINAL BOSS':'READY?';$('#match-overlay-copy').textContent=isTouchDevice?mobileHint:desktopHint;$('#result-stats').innerHTML='';$('#match-begin').textContent=mode==='skill'?'START SOLO CHALLENGE':mode==='manager'?'START MANAGING':mode==='boss'?'CHALLENGE THE BOSS':'KICK OFF';$('#match-begin').dataset.result='';
     const tacticBar=$('#manager-tactic-bar');if(tacticBar){tacticBar.hidden=mode!=='manager';if(mode==='manager')setManagerTactic(state.managerTactic,false);}
     setupGame(mode);resizeCanvas();document.documentElement.requestFullscreen?.().catch(()=>{});lastFrame=performance.now();fpsFrames=0;fpsTime=lastFrame;cancelAnimationFrame(rafId);rafId=requestAnimationFrame(gameLoop);
   }
@@ -592,12 +595,30 @@
     const chaser=nearestPlayer(game.away,game.ball.x,game.ball.y);
     game.away.forEach((player,index)=>{
       const tx=player===chaser?game.ball.x:player.homeX+(game.ball.x-player.homeX)*.16,ty=player===chaser?game.ball.y:player.homeY+(game.ball.y-player.homeY)*.12;
-      moveAI(player,tx,ty,dt,142+(currentOpponent.ovr-70)*1.5);player.cooldown=Math.max(0,player.cooldown-dt);
-      if(player===chaser&&game.ball.owner?.team==='home'&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<28&&player.cooldown<=0){
-        game.ball.owner=null;game.lastTouch='away';game.stealCooldown=.55;game.ball.vx=-120;game.ball.vy=(Math.random()-.5)*160;player.cooldown=.8;showMatchMessage('TACKLED!');tone(170,.04,'square');
-      }else if(player===chaser&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<30&&player.cooldown<=0){
+      const bossMode=game.mode==='boss',aiSpeed=(bossMode?158:142)+(currentOpponent.ovr-70)*(bossMode?1.7:1.5);player.cooldown=Math.max(0,player.cooldown-dt);
+      const bossOwner=bossMode&&game.ball.owner?.team==='away'?game.away[game.ball.owner.index]:null;
+      if(bossOwner===player){
+        const goalX=field.left-35,goalY=270,goalDistance=Math.hypot(goalX-player.x,goalY-player.y),laneOpen=Math.abs(player.y-goalY)<135;
+        // This is the requested ranked-road decision loop adapted to the
+        // local canvas engine: press, tackle, pass when open, then shoot.
+        if(goalDistance<270&&laneOpen){
+          const angle=Math.atan2(goalY-player.y,goalX-player.x);game.ball.owner=null;game.ball.vx=Math.cos(angle)*480;game.ball.vy=Math.sin(angle)*480;game.lastTouch='away';game.opponentKick++;player.cooldown=.62;showMatchMessage('BOSS POWER SHOT');
+        }else{
+          const teammate=game.away.filter(mate=>mate!==player).sort((a,b)=>Math.hypot(a.x-goalX,a.y-goalY)-Math.hypot(b.x-goalX,b.y-goalY))[0];
+          if(teammate&&Math.random()<.32){const dx=teammate.x-game.ball.x,dy=teammate.y-game.ball.y,d=Math.hypot(dx,dy)||1;game.ball.owner=null;game.ball.vx=dx/d*425;game.ball.vy=dy/d*425;game.lastTouch='away';player.cooldown=.48;showMatchMessage('BOSS PASS');}
+          else moveAI(player,goalX+45,goalY+(Math.random()-.5)*100,dt,218);
+        }
+        return;
+      }
+      moveAI(player,tx,ty,dt,aiSpeed);
+      if(bossMode&&player===chaser&&!game.ball.owner&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<34&&Math.hypot(game.ball.vx,game.ball.vy)<220){
+        game.ball.owner={team:'away',index:player.index};game.lastTouch='away';player.cooldown=.35;showMatchMessage('BOSS POSSESSION!');return;
+      }
+      if(player===chaser&&game.ball.owner?.team==='home'&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<(bossMode?35:28)&&player.cooldown<=0){
+        game.ball.owner=null;game.lastTouch='away';game.stealCooldown=bossMode?.4:.55;game.ball.vx=bossMode?-160:-120;game.ball.vy=(Math.random()-.5)*(bossMode?220:160);player.cooldown=bossMode?.58:.8;showMatchMessage(bossMode?'BOSS TACKLE!':'TACKLED!');tone(170,.04,'square');
+      }else if(player===chaser&&Math.hypot(player.x-game.ball.x,player.y-game.ball.y)<(bossMode?34:30)&&player.cooldown<=0){
         const targetX=field.left+92,targetY=Math.max(field.goalTop+32,Math.min(field.goalBottom-32,270+(Math.random()-.5)*70));
-        const angle=Math.atan2(targetY-player.y,targetX-player.x)+(Math.random()-.5)*.12;game.ball.owner=null;game.ball.vx=Math.cos(angle)*390;game.ball.vy=Math.sin(angle)*390;game.lastTouch='away';player.cooldown=.8;game.opponentKick++;tone(170,.04,'square');
+        const angle=Math.atan2(targetY-player.y,targetX-player.x)+(Math.random()-.5)*(bossMode?.06:.12);game.ball.owner=null;game.ball.vx=Math.cos(angle)*(bossMode?455:390);game.ball.vy=Math.sin(angle)*(bossMode?455:390);game.lastTouch='away';player.cooldown=bossMode?.62:.8;game.opponentKick++;tone(170,.04,'square');
       }
     });
   }
@@ -773,10 +794,10 @@
       arcadePoints=10+Math.min(70,Math.floor(game.skillScore/100));arcadeReason=`Kickoff Zero skill performance: ${game.skillScore} points`;
     }else{
       const result=game.homeScore>game.awayScore?'win':game.homeScore<game.awayScore?'loss':'draw';
-      if(result==='win'){state.wins++;coinReward=game.mode==='tournament'?500:320;rpChange=game.mode==='ranked'?45:0;title='VICTORY!';icon='🏆';}
-      else if(result==='loss'){state.losses++;coinReward=90;rpChange=game.mode==='ranked'?-18:0;title='FULL TIME';icon='◆';}
+      if(result==='win'){state.wins++;coinReward=game.mode==='boss'?2000:game.mode==='tournament'?500:320;rpChange=game.mode==='ranked'?45:0;title=game.mode==='boss'?'BOSS DEFEATED!':'VICTORY!';icon=game.mode==='boss'?'☠':'🏆';}
+      else if(result==='loss'){state.losses++;coinReward=90;rpChange=game.mode==='ranked'?-18:0;title=game.mode==='boss'?'THE BOSS WINS':'FULL TIME';icon='◆';}
       else{state.draws++;coinReward=160;rpChange=game.mode==='ranked'?8:0;title='DRAW';icon='⚖';}
-      arcadePoints=result==='win'?40:result==='draw'?25:15;arcadeReason=`Kickoff Zero ${game.mode} match ${result}`;
+      arcadePoints=game.mode==='boss'&&result==='win'?200:result==='win'?40:result==='draw'?25:15;arcadeReason=`Kickoff Zero ${game.mode} match ${result}`;
       state.coins+=coinReward;state.rankPoints=Math.max(0,state.rankPoints+rpChange);state.xp+=result==='win'?60:30;
       if(game.mode==='tournament'){
         if(result==='win'){state.cupWins++;if(state.cupWins>=3){state.cups++;state.cupWins=0;coinReward+=900;state.coins+=900;title='ZERO CUP WON!';copy='Three wins complete! Trophy secured, plus 900 bonus coins.';icon='♛';arcadePoints+=100;arcadeReason='Kickoff Zero tournament championship';}}

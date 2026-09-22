@@ -5,6 +5,7 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const STORAGE_KEY = 'recess-football-career-v1';
   const MAX_PLAYER_STAT = 1000;
+  const MAX_PACK_QUANTITY = 100;
   const nf = new Intl.NumberFormat('en-US');
   const isTouchDevice = Boolean(window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
   document.documentElement.classList.toggle('touch-device', isTouchDevice);
@@ -382,12 +383,12 @@
   function packQuantityValue(){
     const input=$('#pack-quantity');
     const value=Number(input?.value || packQuantity || 1);
-    packQuantity=Math.max(1,Math.min(10,Number.isFinite(value)?Math.floor(value):1));
+    packQuantity=Math.max(1,Math.min(MAX_PACK_QUANTITY,Number.isFinite(value)?Math.floor(value):1));
     if(input) input.value=String(packQuantity);
     return packQuantity;
   }
   function renderPackBuyControls(){
-    const quantity=Math.max(1,Math.min(10,Math.floor(Number(packQuantity)||1)));
+    const quantity=Math.max(1,Math.min(MAX_PACK_QUANTITY,Math.floor(Number(packQuantity)||1)));
     packQuantity=quantity;
     const quantityInput=$('#pack-quantity');
     if(quantityInput)quantityInput.value=String(quantity);
@@ -932,7 +933,7 @@
     $('#roster-search').addEventListener('input',renderSquadPlayerList);$('#roster-sort').addEventListener('change',renderSquadPlayerList);
     $$('.pack-open').forEach(button=>button.addEventListener('click',()=>openPack(button.dataset.pack)));
     $('#pack-quantity-minus').addEventListener('click',()=>{packQuantity=Math.max(1,packQuantityValue()-1);renderPackBuyControls();});
-    $('#pack-quantity-plus').addEventListener('click',()=>{packQuantity=Math.min(10,packQuantityValue()+1);renderPackBuyControls();});
+    $('#pack-quantity-plus').addEventListener('click',()=>{packQuantity=Math.min(MAX_PACK_QUANTITY,packQuantityValue()+1);renderPackBuyControls();});
     $('#pack-quantity').addEventListener('input',()=>{packQuantityValue();renderPackBuyControls();});
     $('#reveal-next').addEventListener('click',nextReveal);$('#reveal-skip').addEventListener('click',closePackReveal);
     $$('.fz-mode-btn').forEach(button=>button.addEventListener('click',()=>{selectedMode=button.dataset.mode;pickOpponent();renderMode();}));

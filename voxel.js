@@ -963,8 +963,12 @@
 
   function updatePlayer(deltaTime) {
     if (!running) return;
+    // Keep keyboard movement and camera controls separate: A/D strafe, while
+    // the left/right arrows rotate the view instead of pushing the player.
+    const lookInput = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
+    if (lookInput) player.yaw += lookInput * 2.65 * deltaTime;
     let forwardInput = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - touchMove.y;
-    let strafeInput = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + touchMove.x;
+    let strafeInput = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + touchMove.x;
     const inputLength = Math.hypot(forwardInput, strafeInput);
     if (inputLength > 1) {
       forwardInput /= inputLength;

@@ -4,6 +4,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const STORAGE_KEY = 'recess-football-career-v1';
+  const MAX_PLAYER_STAT = 1000;
   const nf = new Intl.NumberFormat('en-US');
   const isTouchDevice = Boolean(window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
   document.documentElement.classList.toggle('touch-device', isTouchDevice);
@@ -45,6 +46,36 @@
     {id:'layla-jones',name:'Layla Jones',nation:'England',pos:'LB',group:'DEF',rating:65,pace:72,shot:43,pass:61,def:68,color:'#845840'},
     {id:'pablo-mendez',name:'Pablo Mendez',nation:'Spain',pos:'CAM',group:'MID',rating:63,pace:66,shot:62,pass:70,def:39,color:'#cb8c68'},
     {id:'sana-ito',name:'Sana Ito',nation:'Japan',pos:'GK',group:'GK',rating:61,pace:43,shot:22,pass:55,def:66,color:'#e5ae87'},
+    {id:'ines-benali',name:'Ines Benali',nation:'Algeria',pos:'CAM',group:'MID',rating:74,pace:78,shot:71,pass:82,def:47,color:'#9a6247'},
+    {id:'yuki-fujimoto',name:'Yuki Fujimoto',nation:'Japan',pos:'GK',group:'GK',rating:73,pace:48,shot:24,pass:67,def:79,color:'#dba37f'},
+    {id:'thiago-moura',name:'Thiago Moura',nation:'Brazil',pos:'CB',group:'DEF',rating:80,pace:76,shot:46,pass:74,def:87,color:'#7d4c35'},
+    {id:'emilia-kovac',name:'Emilia Kovac',nation:'Croatia',pos:'ST',group:'ATT',rating:78,pace:82,shot:84,pass:69,def:34,color:'#c88663'},
+    {id:'noah-williams',name:'Noah Williams',nation:'England',pos:'RW',group:'ATT',rating:76,pace:88,shot:73,pass:78,def:40,color:'#b37454'},
+    {id:'lucas-diaz',name:'Lucas Diaz',nation:'Spain',pos:'CM',group:'MID',rating:79,pace:75,shot:68,pass:87,def:70,color:'#d39b75'},
+    {id:'amina-elmasry',name:'Amina Elmasry',nation:'Egypt',pos:'LB',group:'DEF',rating:72,pace:80,shot:49,pass:69,def:76,color:'#86533a'},
+    {id:'farid-rahimi',name:'Farid Rahimi',nation:'Morocco',pos:'ST',group:'ATT',rating:77,pace:84,shot:81,pass:65,def:29,color:'#c47f5e'},
+    {id:'so-yeon-kim',name:'So-yeon Kim',nation:'Korea',pos:'CM',group:'MID',rating:75,pace:79,shot:66,pass:84,def:62,color:'#e1ae88'},
+    {id:'marta-silva',name:'Marta Silva',nation:'Portugal',pos:'GK',group:'GK',rating:74,pace:52,shot:28,pass:71,def:83,color:'#a86e50'},
+    {id:'jonathan-boateng',name:'Jonathan Boateng',nation:'Ghana',pos:'CB',group:'DEF',rating:76,pace:72,shot:41,pass:67,def:84,color:'#68412f'},
+    {id:'camille-dupont',name:'Camille Dupont',nation:'France',pos:'LW',group:'ATT',rating:81,pace:92,shot:79,pass:83,def:37,color:'#d6a07a'},
+    {id:'diego-quintero',name:'Diego Quintero',nation:'Colombia',pos:'RW',group:'ATT',rating:80,pace:89,shot:82,pass:79,def:42,color:'#a96d4d'},
+    {id:'mateus-rocha',name:'Mateus Rocha',nation:'Brazil',pos:'CDM',group:'MID',rating:82,pace:78,shot:64,pass:88,def:90,color:'#73452f'},
+    {id:'lina-haddad',name:'Lina Haddad',nation:'Jordan',pos:'RB',group:'DEF',rating:70,pace:77,shot:45,pass:66,def:73,color:'#c98b68'},
+    {id:'andres-paredes',name:'Andres Paredes',nation:'Argentina',pos:'ST',group:'ATT',rating:85,pace:90,shot:91,pass:75,def:31,color:'#dca781'},
+    {id:'nina-petrovic',name:'Nina Petrovic',nation:'Serbia',pos:'GK',group:'GK',rating:72,pace:47,shot:26,pass:64,def:78,color:'#8a583f'},
+    {id:'oliver-brooks',name:'Oliver Brooks',nation:'Canada',pos:'LB',group:'DEF',rating:71,pace:76,shot:44,pass:63,def:74,color:'#d09a75'},
+    {id:'santiago-vargas',name:'Santiago Vargas',nation:'Uruguay',pos:'CB',group:'DEF',rating:79,pace:74,shot:38,pass:72,def:88,color:'#6d432f'},
+    {id:'fatima-ali',name:'Fatima Ali',nation:'Iran',pos:'CM',group:'MID',rating:69,pace:68,shot:59,pass:76,def:58,color:'#b87958'},
+    {id:'erik-larsson',name:'Erik Larsson',nation:'Sweden',pos:'RW',group:'ATT',rating:73,pace:83,shot:70,pass:72,def:36,color:'#e2b08c'},
+    {id:'noemi-garcia',name:'Noemi Garcia',nation:'Mexico',pos:'CAM',group:'MID',rating:77,pace:81,shot:74,pass:86,def:45,color:'#bd7958'},
+    {id:'david-okeke',name:'David Okeke',nation:'Nigeria',pos:'CDM',group:'MID',rating:78,pace:73,shot:56,pass:79,def:86,color:'#73472f'},
+    {id:'lucas-ribeiro',name:'Lucas Ribeiro',nation:'Cape Verde',pos:'ST',group:'ATT',rating:75,pace:86,shot:78,pass:61,def:30,color:'#9c6548'},
+    {id:'kira-van-dijk',name:'Kira van Dijk',nation:'Netherlands',pos:'CB',group:'DEF',rating:83,pace:85,shot:48,pass:80,def:92,color:'#d7a17b'},
+    {id:'mariam-kone',name:'Mariam Kone',nation:'Mali',pos:'RW',group:'ATT',rating:76,pace:87,shot:75,pass:74,def:39,color:'#805037'},
+    {id:'rafael-costa',name:'Rafael Costa',nation:'Portugal',pos:'CM',group:'MID',rating:80,pace:77,shot:72,pass:90,def:68,color:'#ca8a66'},
+    {id:'clara-schmidt',name:'Clara Schmidt',nation:'Germany',pos:'RB',group:'DEF',rating:78,pace:82,shot:53,pass:75,def:84,color:'#b87756'},
+    {id:'ibrahim-toure',name:'Ibrahim Toure',nation:'Senegal',pos:'LW',group:'ATT',rating:74,pace:91,shot:72,pass:70,def:33,color:'#63402d'},
+    {id:'hana-novak',name:'Hana Novak',nation:'Czechia',pos:'CDM',group:'MID',rating:73,pace:69,shot:57,pass:81,def:77,color:'#dfa987'},
     {id:'felix-ronaldo',name:'Cristiano Ronaldo',nation:'Portugal',pos:'ST',group:'ATT',rating:99,pace:97,shot:99,pass:93,def:45,color:'#c88965'},
     {id:'felix-messi',name:'Lionel Messi',nation:'Argentina',pos:'RW',group:'ATT',rating:98,pace:96,shot:98,pass:99,def:42,color:'#d5a17d'},
     {id:'felix-mbappe',name:'Kylian Mbappe',nation:'France',pos:'LW',group:'ATT',rating:98,pace:99,shot:97,pass:93,def:44,color:'#7b4b34'},
@@ -148,8 +179,8 @@
   function xpLevelOf(id){return trainingProgress(state.owned[id]?.xp).level;}
   function trainingLocked(id){return Boolean(game&&!game.finished&&!$('#match-screen').hidden&&game.home.some(player=>player.playerId===id));}
   function trainingValue(id){return 25+Math.max(0,ratingOf(id)-50)**2;}
-  function ratingOf(id){ const player=playerMap.get(id); return player ? Math.min(99,player.rating + levelOf(id)-1 + Math.round((Number(state.owned[id]?.stats?.pace||0)+Number(state.owned[id]?.stats?.shot||0)+Number(state.owned[id]?.stats?.pass||0)+Number(state.owned[id]?.stats?.def||0))/4)) : 0; }
-  function statOf(id,key){ const player=playerMap.get(id); return player ? Math.min(99,player[key] + levelOf(id)-1 + Number(state.owned[id]?.stats?.[key]||0)) : 0; }
+  function ratingOf(id){ const player=playerMap.get(id); return player ? Math.min(MAX_PLAYER_STAT,player.rating + levelOf(id)-1 + Math.round((Number(state.owned[id]?.stats?.pace||0)+Number(state.owned[id]?.stats?.shot||0)+Number(state.owned[id]?.stats?.pass||0)+Number(state.owned[id]?.stats?.def||0))/4)) : 0; }
+  function statOf(id,key){ const player=playerMap.get(id); return player ? Math.min(MAX_PLAYER_STAT,player[key] + levelOf(id)-1 + Number(state.owned[id]?.stats?.[key]||0)) : 0; }
   function initials(name){ return name.split(' ').map(part=>part[0]).join('').slice(0,2).toUpperCase(); }
   function rarity(player){ const rating=ratingOf(player.id); return rating>=84?'elite':rating>=77?'rare':'common'; }
   function roleGroup(role){ if(role==='GK') return 'GK'; if(['LB','RB','CB'].includes(role)) return 'DEF'; if(['CM','CDM','CAM'].includes(role)) return 'MID'; return 'ATT'; }
@@ -374,8 +405,8 @@
     const player=playerMap.get(playerId);if(!player)return;upgradePlayerId=playerId;
     const level=levelOf(playerId),costCoins=250*level,costTokens=3+level*2,can=state.coins>=costCoins&&state.upgradeTokens>=costTokens&&level<10;
     const progress=trainingProgress(state.owned[playerId]?.xp);
-    const trainingMarkup=`<div class="fz-training-box"><h4>TRAINING XP LEVEL ${progress.level}</h4><p>${progress.max?'MAX XP LEVEL':`${nf.format(progress.xp)} / ${nf.format(progress.needed)} XP to the next breakthrough`}. Each breakthrough adds +1 to all stats, up to 99. Upgrade level stays the same.</p><button class="fz-btn blue" id="open-training" type="button">UPGRADE USING OTHER PLAYERS →</button></div>`;
-    $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(99,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(99,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.upgradeTokens} special upgrade tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} ✦</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>${trainingMarkup}`;
+    const trainingMarkup=`<div class="fz-training-box"><h4>TRAINING XP LEVEL ${progress.level}</h4><p>${progress.max?'MAX XP LEVEL':`${nf.format(progress.xp)} / ${nf.format(progress.needed)} XP to the next breakthrough`}. Each breakthrough adds +1 to all stats, up to ${nf.format(MAX_PLAYER_STAT)}. Upgrade level stays the same.</p><button class="fz-btn blue" id="open-training" type="button">UPGRADE USING OTHER PLAYERS →</button></div>`;
+    $('#upgrade-content').innerHTML=`<div class="fz-upgrade-hero"><div class="fz-upgrade-avatar" style="background:linear-gradient(145deg,${player.color},#142542)">${initials(player.name)}</div><div class="fz-upgrade-name"><h3>${player.name}</h3><p>${player.pos} • ${player.nation} • LEVEL ${level}</p><strong style="font-size:35px">${ratingOf(playerId)} <small style="font-size:10px;color:var(--fz-lime)">OVR</small></strong></div></div><div class="fz-upgrade-stats"><div class="fz-upgrade-stat"><b>${statOf(playerId,'pace')} ${level<10?'→ '+Math.min(MAX_PLAYER_STAT,statOf(playerId,'pace')+1):''}</b>PACE</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'shot')} ${level<10?'→ '+Math.min(MAX_PLAYER_STAT,statOf(playerId,'shot')+1):''}</b>SHOOT</div><div class="fz-upgrade-stat"><b>${statOf(playerId,'pass')} ${level<10?'→ '+Math.min(MAX_PLAYER_STAT,statOf(playerId,'pass')+1):''}</b>PASS</div></div><div class="fz-upgrade-cost"><span>UPGRADE COST<br><small>You have ${state.upgradeTokens} special upgrade tokens</small></span><strong>${nf.format(costCoins)} ● + ${costTokens} ✦</strong></div><button class="fz-btn primary" id="confirm-upgrade" style="width:100%;margin-top:12px" ${can?'':'disabled'}>${level>=10?'MAX LEVEL':can?'UPGRADE TO LEVEL '+(level+1):'MORE RESOURCES NEEDED'}</button>${trainingMarkup}`;
     $('#upgrade-modal').hidden=false;
   }
   function upgradePlayer(){
@@ -404,9 +435,9 @@
     const target=playerMap.get(trainingTargetId);if(!target||!state.owned[target.id]){setView('club');return;}
     for(const id of trainingSelection)if(!state.owned[id]||id===target.id||trainingLocked(id))trainingSelection.delete(id);
     const preview=trainingPreview(),keys=['pace','shot','pass','def'];
-    const capped=keys.every(key=>statOf(target.id,key)>=99)||preview.before.max;
+    const capped=keys.every(key=>statOf(target.id,key)>=MAX_PLAYER_STAT)||preview.before.max;
     $('#training-heading').textContent=`TRAIN ${target.name.toUpperCase()}`;
-    $('#training-preview').innerHTML=`<p>Upgrade level ${levelOf(target.id)} · ${ratingOf(target.id)} OVR</p><h2>XP LEVEL ${preview.before.level}${preview.levelGain?` → ${preview.after.level}`:''}</h2><p>${nf.format(preview.before.xp)} / ${nf.format(preview.before.needed)} XP · +${nf.format(preview.xp)} XP selected</p><progress max="${preview.after.needed}" value="${preview.after.max?preview.after.needed:preview.after.xp}" aria-label="XP after training"></progress><p>${preview.after.max?'Maximum XP level':`After training: ${nf.format(preview.after.xp)} / ${nf.format(preview.after.needed)} XP toward level ${preview.after.level+1}`}</p><div class="fz-training-stats">${keys.map(key=>`<div><b>${key.toUpperCase()}</b><span>${statOf(target.id,key)} → ${Math.min(99,statOf(target.id,key)+preview.statGain)}</span></div>`).join('')}</div><p>Breakthrough costs increase: 100, 175, 300, 475 XP… Every training session also adds ${preview.statGain} to each stat. Stats cap at 99.</p>`;
+    $('#training-preview').innerHTML=`<p>Upgrade level ${levelOf(target.id)} · ${ratingOf(target.id)} OVR</p><h2>XP LEVEL ${preview.before.level}${preview.levelGain?` → ${preview.after.level}`:''}</h2><p>${nf.format(preview.before.xp)} / ${nf.format(preview.before.needed)} XP · +${nf.format(preview.xp)} XP selected</p><progress max="${preview.after.needed}" value="${preview.after.max?preview.after.needed:preview.after.xp}" aria-label="XP after training"></progress><p>${preview.after.max?'Maximum XP level':`After training: ${nf.format(preview.after.xp)} / ${nf.format(preview.after.needed)} XP toward level ${preview.after.level+1}`}</p><div class="fz-training-stats">${keys.map(key=>`<div><b>${key.toUpperCase()}</b><span>${statOf(target.id,key)} → ${Math.min(MAX_PLAYER_STAT,statOf(target.id,key)+preview.statGain)}</span></div>`).join('')}</div><p>Breakthrough costs increase: 100, 175, 300, 475 XP… Every training session also adds ${preview.statGain} to each stat. Stats cap at ${nf.format(MAX_PLAYER_STAT)}.</p>`;
     $('#training-summary').textContent=capped?'All stats or XP levels are maxed.':`${preview.ids.length} selected · ${nf.format(preview.xp)} XP · +${preview.statGain} to each stat${preview.levelGain?` · XP level +${preview.levelGain}`:''}. Selected players will be permanently consumed.`;
     $('#confirm-training').disabled=!preview.ids.length||capped;
     const roster=getOwnedPlayers().filter(player=>player.id!==target.id).sort((a,b)=>Number(trainingLocked(a.id))-Number(trainingLocked(b.id))||ratingOf(b.id)-ratingOf(a.id));
@@ -418,9 +449,9 @@
     // Revalidate immediately before consuming cards, including the live XI.
     if(ids.some(id=>id===targetId||!state.owned[id]||trainingLocked(id))){showToast('A selected player is locked or unavailable.');renderTraining();return;}
     const preview=trainingPreview(),entry=state.owned[targetId],keys=['pace','shot','pass','def'];
-    if(preview.before.max||keys.every(key=>statOf(targetId,key)>=99))return;
+    if(preview.before.max||keys.every(key=>statOf(targetId,key)>=MAX_PLAYER_STAT))return;
     entry.xp=(entry.xp||0)+preview.xp;entry.stats ||= {};
-    keys.forEach(key=>entry.stats[key]=(Number(entry.stats[key])||0)+Math.min(preview.statGain,99-statOf(targetId,key)));
+    keys.forEach(key=>entry.stats[key]=(Number(entry.stats[key])||0)+Math.min(preview.statGain,MAX_PLAYER_STAT-statOf(targetId,key)));
     state.consumedShopPlayers ||= [];
     ids.forEach(id=>{delete state.owned[id];if(id.startsWith('shop-')&&!state.consumedShopPlayers.includes(id))state.consumedShopPlayers.push(id);Object.keys(state.squad).forEach(slot=>{if(state.squad[slot]===id)delete state.squad[slot];});});
     trainingSelection.clear();saveState();renderAll();renderTraining();

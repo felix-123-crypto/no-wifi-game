@@ -1,6 +1,6 @@
 {
-  "name":"No Wifi Game — Recess Arcade",
-  "short_name":"No Wifi Game",
+  "name":"Recess Arcade — No Wifi Game",
+  "short_name":"Recess Arcade",
   "description":"Free browser games that keep working after your first visit.",
   "start_url":"./index.html",
   "display":"standalone",

@@ -1696,7 +1696,11 @@
       if (document.pointerLockElement === canvas) {
         updateLook(event.movementX, event.movementY, lookSensitivity);
       } else if (draggingMouse) {
-        updateLook(event.movementX, event.movementY, lookSensitivity * 1.35);
+        const deltaX = event.clientX - lastLookX;
+        const deltaY = event.clientY - lastLookY;
+        lastLookX = event.clientX;
+        lastLookY = event.clientY;
+        updateLook(deltaX, deltaY, lookSensitivity * 1.35);
       }
     });
 
@@ -1724,7 +1728,11 @@
     canvas.addEventListener("mousedown", function (event) {
       if (!ready || touchMode) return;
       if (!running) return;
-      if (document.pointerLockElement !== canvas) draggingMouse = true;
+      if (document.pointerLockElement !== canvas) {
+        draggingMouse = true;
+        lastLookX = event.clientX;
+        lastLookY = event.clientY;
+      }
       if (event.button === 0) mineBlock();
       else if (event.button === 2) placeBlock();
     });

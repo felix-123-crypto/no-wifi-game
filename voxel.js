@@ -21,6 +21,7 @@
   const hungerMeter = document.getElementById("hunger-meter");
   const survivalModeLabel = document.getElementById("survival-mode-label");
   const mobCountEl = document.getElementById("mob-count");
+  const foodCountEl = document.getElementById("food-count");
   const settingsButton = document.getElementById("settings-button");
   const settingsPanel = document.getElementById("settings-panel");
   const closeSettingsButton = document.getElementById("close-settings");
@@ -45,10 +46,12 @@
   const craftingPanel = document.getElementById("crafting-panel");
   const closeCraftingButton = document.getElementById("close-crafting");
   const recipeButtons = Array.from(craftingPanel.querySelectorAll("[data-recipe]"));
-  const recipeStatus = {
-    brick: document.getElementById("recipe-brick-status"),
-    glass: document.getElementById("recipe-glass-status")
-  };
+  const recipeBookList = document.getElementById("recipe-book-list");
+  const inventoryGrid = document.getElementById("inventory-grid");
+  const craftSources = document.getElementById("craft-sources");
+  const craftSlots = Array.from(craftingPanel.querySelectorAll("[data-craft-slot]"));
+  const craftOrderButton = document.getElementById("craft-order-button");
+  const craftOrderStatus = document.getElementById("craft-order-status");
 
   const WORLD_X = 144;
   const WORLD_Y = 40;
@@ -79,9 +82,20 @@
   });
   const inventory = Object.create(null);
   HOTBAR_BLOCKS.forEach(function (id) { inventory[id] = 0; });
+  const FOOD_ITEMS = {
+    raw_meat: { name: "Raw meat", hunger: 18, icon: "🍖" },
+    berries: { name: "Berries", hunger: 10, icon: "🫐" },
+    cooked_meat: { name: "Cooked meat", hunger: 32, icon: "🍗" }
+  };
+  const foodInventory = { raw_meat: 0, berries: 0, cooked_meat: 0 };
+  const craftedInventory = { crafting_table: 0, torch: 0 };
+  const recipeOrder = [null, null, null];
   const RECIPES = {
-    brick: { output: 7, amount: 1, inputs: { 2: 1, 3: 2 } },
-    glass: { output: 8, amount: 1, inputs: { 6: 1, 9: 1 } }
+    brick: { name: "Brick", output: 7, amount: 1, order: [3, 3, 2], inputs: { 2: 1, 3: 2 }, hint: "STONE · STONE · DIRT" },
+    glass: { name: "Glass", output: 8, amount: 1, order: [6, 9], inputs: { 6: 1, 9: 1 }, hint: "SAND · CRYSTAL" },
+    crafting_table: { name: "Crafting table", output: "crafting_table", amount: 1, order: [4, 4, 4], inputs: { 4: 3 }, hint: "WOOD · WOOD · WOOD" },
+    torch: { name: "Torches", output: "torch", amount: 4, order: [9, 4], inputs: { 9: 1, 4: 1 }, hint: "CRYSTAL · WOOD" },
+    cooked_meat: { name: "Cooked meat", output: "cooked_meat", amount: 1, order: ["raw_meat"], inputs: { raw_meat: 1 }, hint: "RAW MEAT" }
   };
 
   const FACE_DEFINITIONS = [
@@ -409,7 +423,8 @@
         name: i % 3 === 0 ? "Creeper" : (i % 3 === 1 ? "Piglin" : "Slime"),
         maxHealth: i % 3 === 1 ? 4 : (i % 3 === 0 ? 3 : 2),
         health: i % 3 === 1 ? 4 : (i % 3 === 0 ? 3 : 2),
-        dropId: i % 3 === 0 ? 2 : (i % 3 === 1 ? 4 : 6),
+        dropFood: i % 3 === 0 ? "raw_meat" : (i % 3 === 1 ? "berries" : "raw_meat"),
+        dropAmount: i % 3 === 1 ? 2 : 1,
         hitCooldown: 0,
         hitFlash: 0
       });
@@ -1120,6 +1135,58 @@
     return Math.max(0, Number(inventory[id] || 0));
   }
 
+  function foodCount(id) {
+    return Math.max(0, Number(foodInventory[id] || 0));
+  }
+
+  function craftedCount(id) {
+    return Math.max(0, Number(craftedInventory[id] || 0));
+  }
+
+  function itemCount(id) {
+    if (typeof id === "number" || /^\d+$/.test(String(id))) return inventoryCount(Number(id));
+    if (Object.prototype.hasOwnProperty.call(foodInventory, id)) return foodCount(id);
+    return craftedCount(id);
+  }
+
+  function itemName(id) {
+    const numericId = Number(id);
+    if (BLOCKS[numericId]) return BLOCKS[numericId].name;
+    if (FOOD_ITEMS[id]) return FOOD_ITEMS[id].name;
+    if (id === "crafting_table") return "Crafting table";
+    if (id === "torch") return "Torch";
+    return String(id);
+  }
+
+  function itemIcon(id) {
+    if (FOOD_ITEMS[id]) return FOOD_ITEMS[id].icon;
+    if (id === "crafting_table") return "🧰";
+    if (id === "torch") return "🔥";
+    return "";
+  }
+
+  function addItem(id, amount) {
+    if (typeof id === "number" || /^\d+$/.test(String(id))) {
+      addInventory(Number(id), amount);
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(foodInventory, id)) foodInventory[id] = foodCount(id) + amount;
+    else craftedInventory[id] = craftedCount(id) + amount;
+    updateInventoryUi();
+    updateCraftingUi();
+  }
+
+  function removeItem(id, amount) {
+    if (typeof id === "number" || /^\d+$/.test(String(id))) return removeInventory(Number(id), amount);
+    const bag = Object.prototype.hasOwnProperty.call(foodInventory, id) ? foodInventory : craftedInventory;
+    const current = Math.max(0, Number(bag[id] || 0));
+    if (current < amount) return false;
+    bag[id] = current - amount;
+    updateInventoryUi();
+    updateCraftingUi();
+    return true;
+  }
+
   function addInventory(id, amount) {
     inventory[id] = inventoryCount(id) + amount;
     updateInventoryUi();
@@ -1146,44 +1213,141 @@
       const block = BLOCKS[id];
       button.setAttribute("aria-label", "Select " + (block ? block.name : "block") + " block (" + count + " available)");
     }
+    if (foodCountEl) {
+      const totalFood = Object.keys(foodInventory).reduce(function (sum, id) { return sum + foodCount(id); }, 0);
+      foodCountEl.textContent = String(totalFood);
+      foodCountEl.title = "Food in backpack: " + totalFood;
+    }
+  }
+
+  function eatFood(id) {
+    if (!ready || !hasEntered) return;
+    const food = FOOD_ITEMS[id];
+    if (!food || foodCount(id) <= 0) {
+      showToast("No food of that type in your backpack.");
+      return;
+    }
+    if (survival.hunger >= 100) {
+      showToast("You are not hungry yet.");
+      return;
+    }
+    foodInventory[id] = foodCount(id) - 1;
+    survival.hunger = Math.min(100, survival.hunger + food.hunger);
+    updateInventoryUi();
+    updateCraftingUi();
+    showToast("Ate " + food.name + " · hunger +" + food.hunger);
+    playTone(620, 0.08, "triangle", 0.02);
   }
 
   function canCraft(recipe) {
     const keys = Object.keys(recipe.inputs);
     for (let i = 0; i < keys.length; i += 1) {
-      const id = Number(keys[i]);
-      if (inventoryCount(id) < recipe.inputs[id]) return false;
+      const id = /^\d+$/.test(keys[i]) ? Number(keys[i]) : keys[i];
+      if (itemCount(id) < recipe.inputs[keys[i]]) return false;
     }
     return true;
   }
 
   function updateCraftingUi() {
-    for (let i = 0; i < recipeButtons.length; i += 1) {
-      const button = recipeButtons[i];
-      const recipe = RECIPES[button.dataset.recipe];
-      if (!recipe) continue;
-      const available = canCraft(recipe);
-      button.disabled = !available;
-      const status = recipeStatus[button.dataset.recipe];
-      if (status) status.textContent = available ? "READY" : "NEED INGREDIENTS";
+    if (!recipeBookList || !inventoryGrid || !craftSources) return;
+    recipeBookList.innerHTML = "";
+    Object.keys(RECIPES).forEach(function (key) {
+      const recipe = RECIPES[key];
+      const entry = document.createElement("div");
+      entry.className = "recipe-entry";
+      entry.innerHTML = "<strong>" + recipe.name + "</strong><span>" + recipe.hint + " → " + recipe.amount + " " + itemName(recipe.output) + "</span><em>" + (canCraft(recipe) ? "READY" : "NEED INGREDIENTS") + "</em>";
+      recipeBookList.appendChild(entry);
+    });
+
+    const bagItems = HOTBAR_BLOCKS.map(String).concat(["raw_meat", "berries", "cooked_meat", "crafting_table", "torch"]);
+    inventoryGrid.innerHTML = "";
+    bagItems.forEach(function (id) {
+      const count = itemCount(id);
+      const cell = document.createElement("div");
+      cell.className = "inventory-cell" + (count ? " has-item" : "");
+      cell.innerHTML = "<b>" + (itemIcon(id) || itemName(id).slice(0, 2).toUpperCase()) + "</b><span>" + itemName(id) + "</span><strong>" + count + "</strong>";
+      if (FOOD_ITEMS[id]) {
+        cell.classList.add("food-cell");
+        cell.title = "Click to eat " + itemName(id);
+        cell.addEventListener("click", function () { eatFood(id); });
+      }
+      inventoryGrid.appendChild(cell);
+    });
+
+    craftSources.innerHTML = "";
+    bagItems.forEach(function (id) {
+      if (itemCount(id) <= 0) return;
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "craft-source";
+      chip.draggable = true;
+      chip.dataset.item = /^\d+$/.test(id) ? String(Number(id)) : id;
+      chip.innerHTML = "<b>" + (itemIcon(id) || itemName(id).slice(0, 2).toUpperCase()) + "</b> " + itemName(id) + " ×" + itemCount(id);
+      chip.addEventListener("dragstart", function (event) {
+        event.dataTransfer.setData("text/plain", chip.dataset.item);
+      });
+      chip.addEventListener("click", function () {
+        const empty = recipeOrder.indexOf(null);
+        if (empty >= 0) setCraftSlot(empty, chip.dataset.item);
+      });
+      craftSources.appendChild(chip);
+    });
+    craftSlots.forEach(function (slot, index) {
+      slot.textContent = recipeOrder[index] === null ? "DROP" : (itemIcon(recipeOrder[index]) || itemName(recipeOrder[index]).slice(0, 2).toUpperCase());
+      slot.classList.toggle("filled", recipeOrder[index] !== null);
+      slot.title = recipeOrder[index] === null ? "Drop an ingredient here" : itemName(recipeOrder[index]) + " (click to clear)";
+      slot.onclick = function () {
+        recipeOrder[index] = null;
+        updateCraftingUi();
+      };
+      slot.ondragover = function (event) { event.preventDefault(); };
+      slot.ondrop = function (event) {
+        event.preventDefault();
+        const id = event.dataTransfer.getData("text/plain");
+        if (id) setCraftSlot(index, id);
+      };
+    });
+    if (craftOrderButton) craftOrderButton.disabled = !findMatchingRecipe();
+    if (craftOrderStatus) craftOrderStatus.textContent = findMatchingRecipe() ? "ORDER MATCHED · READY TO CRAFT" : "Drag ingredients into the order slots";
+  }
+
+  function findMatchingRecipe() {
+    const order = recipeOrder.filter(function (item) { return item !== null; });
+    const keys = Object.keys(RECIPES);
+    for (let i = 0; i < keys.length; i += 1) {
+      const recipe = RECIPES[keys[i]];
+      if (order.length !== recipe.order.length) continue;
+      let matches = true;
+      for (let j = 0; j < order.length; j += 1) {
+        if (String(order[j]) !== String(recipe.order[j])) { matches = false; break; }
+      }
+      if (matches && canCraft(recipe)) return keys[i];
     }
+    return null;
+  }
+
+  function setCraftSlot(index, id) {
+    if (index < 0 || index >= craftSlots.length) return;
+    recipeOrder[index] = id;
+    updateCraftingUi();
   }
 
   function craftRecipe(key) {
     if (!ready || !hasEntered) return;
     const recipe = RECIPES[key];
     if (!recipe || !canCraft(recipe)) {
-      showToast("Mine the listed ingredients first.");
+      showToast("Mine or collect the listed ingredients first.");
       return;
     }
     const keys = Object.keys(recipe.inputs);
     for (let i = 0; i < keys.length; i += 1) {
-      removeInventory(Number(keys[i]), recipe.inputs[keys[i]]);
+      removeItem(/^\d+$/.test(keys[i]) ? Number(keys[i]) : keys[i], recipe.inputs[keys[i]]);
     }
-    addInventory(recipe.output, recipe.amount);
+    addItem(recipe.output, recipe.amount);
+    recipeOrder[0] = recipeOrder[1] = recipeOrder[2] = null;
     stats.score += 8;
     updateScore();
-    showToast("Crafted " + recipe.amount + " " + BLOCKS[recipe.output].name + ". Ingredients reduced exactly.");
+    showToast("Crafted " + recipe.amount + " " + itemName(recipe.output) + ". Ingredients reduced exactly.");
     playTone(430, 0.08, "triangle", 0.02);
     updateCraftingUi();
   }
@@ -1208,10 +1372,10 @@
     if (mob.health <= 0) {
       const mobIndex = mobs.indexOf(mob);
       if (mobIndex >= 0) mobs.splice(mobIndex, 1);
-      addInventory(mob.dropId, 1);
+      addItem(mob.dropFood, mob.dropAmount);
       stats.score += 25;
       awardArcadePoints(2, "Voxel Frontier: mob defeated");
-      showToast(mob.name + " defeated! +1 " + BLOCKS[mob.dropId].name);
+      showToast(mob.name + " defeated! +" + mob.dropAmount + " " + FOOD_ITEMS[mob.dropFood].name);
       playTone(520, 0.09, "triangle", 0.025);
     } else {
       showToast(mob.name + " hit! " + mob.health + "/" + mob.maxHealth + " HP");
@@ -1491,6 +1655,7 @@
     hungerValue.textContent = String(hunger);
     healthMeter.style.width = health + "%";
     hungerMeter.style.width = hunger + "%";
+    if (foodCountEl) foodCountEl.textContent = String(Object.keys(foodInventory).reduce(function (sum, id) { return sum + foodCount(id); }, 0));
     survivalModeLabel.textContent = survivalMode ? "SURVIVAL MODE" : "CREATIVE MODE";
     mobCountEl.textContent = String(mobs.length);
     if (now - lastHudUpdate > 100) {
@@ -1638,6 +1803,16 @@
         craftRecipe(button.dataset.recipe);
       });
     });
+    if (craftOrderButton) {
+      craftOrderButton.addEventListener("click", function () {
+        const matchingRecipe = findMatchingRecipe();
+        if (!matchingRecipe) {
+          showToast("That order is not in the recipe book yet.");
+          return;
+        }
+        craftRecipe(matchingRecipe);
+      });
+    }
     survivalToggle.addEventListener("change", function () {
       survivalMode = survivalToggle.checked;
       if (survivalMode) {

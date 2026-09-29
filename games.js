@@ -2,7 +2,8 @@ const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),scoreEl
 const overlay=document.querySelector('#overlay'),startBtn=document.querySelector('#start'),titleEl=document.querySelector('#game-title'),subEl=document.querySelector('#game-subtitle'),kickEl=document.querySelector('#game-kicker'),howEl=document.querySelector('#how');
 const game=new URLSearchParams(location.search).get('game')||'pacman';let running=false,score=0,raf,keys={};
 let gdLevel='stereo',practiceMode=false;const gdConfigs={stereo:{label:'STEREO MADNESS',speed:255,next:1.35,finish:460,platforms:false},backtrack:{label:'BACK ON TRACK',speed:300,next:1.12,finish:145,platforms:true},polargeist:{label:'POLARGEIST',speed:340,next:.92,finish:170,platforms:true}};const gdOptions=document.querySelector('#gd-options');if(game==='gd'&&gdOptions){gdOptions.hidden=false;document.querySelector('#gd-level').addEventListener('change',e=>{gdLevel=e.target.value;});document.querySelector('#gd-practice').addEventListener('change',e=>{practiceMode=e.target.checked;});}const dinoOptions=document.querySelector('#dino-options');if(game==='dino'&&dinoOptions){dinoOptions.hidden=false;}
-const meta={pacman:['Maze Muncher','ARCADE CLASSIC','Clear the maze. Dodge the ghosts. Chase a new high score.','Use arrow keys or WASD. Collect every dot while keeping clear of roaming ghosts.'],blocks:['Block Quest','CREATIVE MODE','Dig deep, gather gems, and build your way to the sky.','Move with arrows or WASD. Click blocks to mine them, then press Space to place a block nearby.'],football:['Pocket Football','SPORTS CHALLENGE','Aim your shot. Beat the keeper. Find the top corner.','Move the target with arrows or WASD, then press Space or tap the game to shoot.'],dino:['Chrome Dino','ARCADE RUNNER','Jump the cacti and survive as the desert gets faster.','Press Space, ArrowUp, or W to jump. The longer you survive, the faster it gets.'],gd:['Cube Rush','GEOMETRY RUNNER','Choose a premade level, chase 100%, or practice from checkpoints.','Pick Stereo Madness, Back on Track, Polargeist, or Wave Run. Hold Space, ArrowUp, or W to control your jump or wave.']};
+const pacmanOptions=document.querySelector('#pacman-options');let pacmanDifficulty=1;if(game==='pacman'&&pacmanOptions){pacmanOptions.hidden=false;const slider=document.querySelector('#pacman-difficulty');const label=document.querySelector('#pacman-difficulty-label');const update=()=>{pacmanDifficulty=Math.max(1,Math.min(100,Number(slider.value)||1));label.textContent=`${pacmanDifficulty===1?'EXTRA EASY':`LEVEL ${pacmanDifficulty}`} · ${pacmanDifficulty}×`;};slider.addEventListener('input',update);update();document.body.classList.add('pacman-page');}
+const meta={pacman:['Maze Muncher','ARCADE CLASSIC','Clear the maze. Dodge the ghosts. Chase a new high score.','Use arrow keys or WASD. Collect dots, grab cherries, and clear every corridor before you lose your lives.'],blocks:['Block Quest','CREATIVE MODE','Dig deep, gather gems, and build your way to the sky.','Move with arrows or WASD. Click blocks to mine them, then press Space to place a block nearby.'],football:['Pocket Football','SPORTS CHALLENGE','Aim your shot. Beat the keeper. Find the top corner.','Move the target with arrows or WASD, then press Space or tap the game to shoot.'],dino:['Chrome Dino','ARCADE RUNNER','Jump the cacti and survive as the desert gets faster.','Press Space, ArrowUp, or W to jump. The longer you survive, the faster it gets.'],gd:['Cube Rush','GEOMETRY RUNNER','Choose a premade level, chase 100%, or practice from checkpoints.','Pick Stereo Madness, Back on Track, Polargeist, or Wave Run. Hold Space, ArrowUp, or W to control your jump or wave.']};
 [titleEl.textContent,kickEl.textContent,subEl.textContent,howEl.textContent]=meta[game]||meta.pacman;document.title=`${titleEl.textContent} — Recess Arcade`;
 const touchPad=document.querySelector('#touch');
 if(touchPad){
@@ -88,6 +89,112 @@ function gdBeginnerOriginal(){
   }raf=requestAnimationFrame(loop)
 }
 function showPracticeCheckpoint(){const node=document.querySelector('#overlay-copy');if(node)node.textContent='Practice checkpoint reached — keep going!';}
+
+// Pellet Dash mode: a fuller maze run adapted from the supplied reference.
+// It keeps the site's existing score/progress hooks while adding lives,
+// cherries, difficulty ramping, smarter ghosts, a timer, and a larger maze.
+function pelletDash(){
+  const tile=28;
+  const map=[
+    '############################',
+    '#P...........##...........C#',
+    '#.####.#####.##.#####.####.#',
+    '#..........................#',
+    '#.##.##.###.####.###.##.##.#',
+    '#....##.....G..G.....##....#',
+    '####.##.###.####.###.##.####',
+    '#..........................#',
+    '#.####.##.########.##.####.#',
+    '#C.....##....##....##.....C#',
+    '######.#####.##.#####.######',
+    '#..........................#',
+    '#.###.####.##..##.####.###.#',
+    '#...G.......##.......G.....#',
+    '#.###.####.##..##.####.###.#',
+    '#..........................#',
+    '#####.##.###.####.###.##.###',
+    '#C....##.....G..G....##...C#',
+    '#.##.##.###.####.###.##.##.#',
+    '#..........................#',
+    '#.####.#####.##.#####.####.#',
+    '#....##.....####.....##....#',
+    '#..........C....C..........#',
+    '############################'
+  ];
+  const cols=map[0].length,rows=map.length;
+  canvas.width=cols*tile;canvas.height=rows*tile;canvas.style.aspectRatio=`${cols}/${rows}`;
+  const livesBox=document.querySelector('#pacman-lives-box'),pelletsBox=document.querySelector('#pacman-pellets-box'),timeBox=document.querySelector('#pacman-time-box');
+  const livesEl=document.querySelector('#pacman-lives'),pelletsEl=document.querySelector('#pacman-pellets'),timeEl=document.querySelector('#pacman-time');
+  [livesBox,pelletsBox,timeBox].forEach(node=>{if(node)node.hidden=false;});
+  const level=Math.max(1,Math.min(100,pacmanDifficulty));
+  const pressure=(level-1)/99;
+  const selected={playerDelay:Math.round(112+pressure*24),ghostDelay:Math.round(620-pressure*520),chaseChance:.02+pressure*.9,cherryMs:30000};
+  const beginnerGrace=20000,rampDuration=60000;
+  let grid=[],player={x:1,y:1,dir:{x:0,y:0},wanted:{x:0,y:0}},ghosts=[];
+  let runScore=0,lives=3,pelletsLeft=0,cherryUntil=0,lastPlayerMove=0,lastGhostMove=0,lastCherrySpawn=0,runStartedAt=performance.now(),lastFrame=runStartedAt,lastHud=0,frames=0,fpsClock=runStartedAt,gameState='playing',hitCooldown=0,floating=[];
+  const ghostColors=['#47c8ff','#ff4f8b','#9b6dff','#ff8a4c','#3ff0b5'];
+  const dirs=[{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
+  const keyDir=()=>keys.ArrowLeft||keys.KeyA?{x:-1,y:0}:keys.ArrowRight||keys.KeyD?{x:1,y:0}:keys.ArrowUp||keys.KeyW?{x:0,y:-1}:keys.ArrowDown||keys.KeyS?{x:0,y:1}:null;
+  map.forEach((row,y)=>row.split('').forEach((cell,x)=>{if(cell==='P'){player.x=x;player.y=y;} }));
+  grid=map.map(row=>row.split('').map(cell=>cell==='#'?'#':cell==='P'||cell==='G'?' ':cell==='C'?'C':'.'));
+  map.forEach((row,y)=>row.split('').forEach((cell,x)=>{if(cell==='G')ghosts.push({x,y,vx:x,vy:y,color:ghostColors[ghosts.length%ghostColors.length]});}));
+  grid[player.y][player.x]=' ';
+  pelletsLeft=grid.flat().filter(cell=>cell==='.').length;
+  function elapsed(now){return Math.max(0,now-runStartedAt);}
+  function formatTime(ms){const seconds=Math.floor(ms/1000);return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}
+  function ramp(now){return Math.max(0,Math.min(1,(elapsed(now)-beginnerGrace)/rampDuration));}
+  function activeGhostDelay(now){const progress=ramp(now);return Math.round(selected.ghostDelay+(760-selected.ghostDelay)*(1-progress));}
+  function wrapX(x){return (x+cols)%cols;}
+  function canMove(x,y){return y>=0&&y<rows&&grid[y][wrapX(x)]!=='#';}
+  function cellAt(x,y){return y>=0&&y<rows?{x:wrapX(x),y}:null;}
+  function addFloat(text,x,y,color){floating.push({text,x:x*tile+tile/2,y:y*tile+tile/2,color,born:performance.now()});}
+  function updateHud(now){
+    setScore(Math.floor(runScore));
+    if(livesEl)livesEl.textContent=String(Math.max(0,lives));
+    if(pelletsEl)pelletsEl.textContent=String(pelletsLeft);
+    if(timeEl)timeEl.textContent=formatTime(elapsed(now));
+    if(now-lastHud>450){const fpsEl=document.querySelector('#fps');if(fpsEl)fpsEl.textContent=String(Math.min(120,Math.round(frames*1000/Math.max(1,now-fpsClock))));frames=0;fpsClock=now;lastHud=now;}
+  }
+  function finishRun(title,text){gameState=title==='YOU WIN'?'won':'lost';running=false;cancelAnimationFrame(raf);document.querySelector('#overlay-title').textContent=title;document.querySelector('#overlay-copy').textContent=text;startBtn.textContent='PLAY AGAIN';overlay.hidden=false;updateHud(performance.now());}
+  function movePlayer(now){
+    if(now-lastPlayerMove<selected.playerDelay)return;
+    lastPlayerMove=now;const requested=keyDir();if(requested)player.wanted=requested;
+    const next=cellAt(player.x+player.wanted.x,player.y+player.wanted.y);if(next&&canMove(next.x,next.y))player.dir=player.wanted;
+    const step=cellAt(player.x+player.dir.x,player.y+player.dir.y);if(!step||!canMove(step.x,step.y))return;
+    player.x=step.x;player.y=step.y;const cell=grid[player.y][player.x];
+    if(cell==='.'){grid[player.y][player.x]=' ';pelletsLeft-=1;runScore+=10*level;addFloat(`+${10*level}`,player.x,player.y,'#55e6a5');if(Math.floor(runScore/10)%5===0)window.RecessPoints?.award?.(5,'Maze dots');}
+    if(cell==='C'){grid[player.y][player.x]=' ';cherryUntil=Math.max(cherryUntil,now)+selected.cherryMs;addFloat('+30s',player.x,player.y,'#ff5b7c');}
+    if(pelletsLeft<=0){window.RecessPoints?.award?.(75,'Maze cleared');finishRun('YOU WIN',`Maze cleared at difficulty ${level}. Final score: ${Math.floor(runScore)}.`);}
+  }
+  function moveGhosts(now){
+    if(now-lastGhostMove<activeGhostDelay(now))return;
+    lastGhostMove=now;const powered=now<cherryUntil;
+    ghosts.forEach(ghost=>{
+      const options=dirs.map(dir=>{const next=cellAt(ghost.x+dir.x,ghost.y+dir.y);return next&&canMove(next.x,next.y)?{dir,x:next.x,y:next.y}:null;}).filter(Boolean);if(!options.length)return;
+      options.sort((a,b)=>{const da=Math.abs(a.x-player.x)+Math.abs(a.y-player.y),db=Math.abs(b.x-player.x)+Math.abs(b.y-player.y);return powered?db-da:da-db;});
+      const choice=Math.random()<(selected.chaseChance*(.18+ramp(now)*.82))?options[0]:options[Math.floor(Math.random()*options.length)];ghost.x=choice.x;ghost.y=choice.y;
+    });
+  }
+  function checkCollisions(now){
+    if(now<hitCooldown)return;
+    for(let i=ghosts.length-1;i>=0;i-=1){const ghost=ghosts[i];if(ghost.x!==player.x||ghost.y!==player.y)continue;
+      if(now<cherryUntil){runScore+=30*level;addFloat(`+${30*level}`,player.x,player.y,'#55e6a5');ghosts.splice(i,1);continue;}
+      lives-=1;hitCooldown=now+1300;player.x=1;player.y=1;player.dir={x:0,y:0};player.wanted={x:0,y:0};if(lives<=0){finishRun('GAME OVER',`Final score: ${Math.floor(runScore)}. Try a different route at difficulty ${level}.`);}return;
+    }
+  }
+  function countCherries(){return grid.flat().filter(cell=>cell==='C').length;}
+  function spawnCherry(){if(countCherries()>=8)return;const open=[];for(let y=0;y<rows;y+=1)for(let x=0;x<cols;x+=1)if(grid[y][x]===' '&&!(player.x===x&&player.y===y)&&!ghosts.some(g=>g.x===x&&g.y===y))open.push({x,y});if(open.length){const pick=open[Math.floor(Math.random()*open.length)];grid[pick.y][pick.x]='C';}}
+  function draw(now){
+    ctx.clearRect(0,0,canvas.width,canvas.height);for(let y=0;y<rows;y+=1)for(let x=0;x<cols;x+=1){const px=x*tile,py=y*tile;ctx.fillStyle=grid[y][x]==='#'?'#172a68':'#0d152b';ctx.fillRect(px,py,tile,tile);if(grid[y][x]==='#'){ctx.fillStyle='rgba(71,200,255,.3)';ctx.fillRect(px+3,py+3,tile-6,2);ctx.fillStyle='rgba(13,18,48,.48)';ctx.fillRect(px+3,py+tile-5,tile-6,2);}else if(grid[y][x]==='.'){ctx.fillStyle='#fff3a6';ctx.beginPath();ctx.arc(px+tile/2,py+tile/2,4,0,Math.PI*2);ctx.fill();}else if(grid[y][x]==='C'){ctx.fillStyle='rgba(255,79,139,.22)';ctx.beginPath();ctx.arc(px+tile/2,py+tile/2,13,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff4f8b';ctx.beginPath();ctx.arc(px+tile/2,py+tile/2,9,0,Math.PI*2);ctx.fill();ctx.fillStyle='#3ff0b5';ctx.fillRect(px+16,py+6,3,9);}}
+    ghosts.forEach(ghost=>{const x=ghost.vx*tile+tile/2,y=ghost.vy*tile+tile/2;ghost.vx+=(ghost.x-ghost.vx)*.22;ghost.vy+=(ghost.y-ghost.vy)*.22;const powered=now<cherryUntil;ctx.fillStyle=powered?'#55e6a5':ghost.color;ctx.beginPath();ctx.arc(x,y-2,12,Math.PI,0);ctx.lineTo(x+12,y+13);ctx.lineTo(x+6,y+9);ctx.lineTo(x,y+13);ctx.lineTo(x-6,y+9);ctx.lineTo(x-12,y+13);ctx.closePath();ctx.fill();ctx.fillStyle='#0a0d13';ctx.beginPath();ctx.arc(x-5,y-3,2.8,0,Math.PI*2);ctx.arc(x+5,y-3,2.8,0,Math.PI*2);ctx.fill();});
+    const px=player.x*tile+tile/2,py=player.y*tile+tile/2,angle=Math.atan2(player.dir.y,player.dir.x)||0;ctx.save();ctx.translate(px,py);ctx.rotate(angle);ctx.fillStyle='#ffe45c';ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,12,.22,Math.PI*2-.22);ctx.closePath();ctx.fill();ctx.restore();
+    floating=floating.filter(item=>now-item.born<900);floating.forEach(item=>{const progress=(now-item.born)/900;ctx.globalAlpha=1-progress;ctx.fillStyle=item.color;ctx.font='900 16px Arial';ctx.textAlign='center';ctx.fillText(item.text,item.x,item.y-progress*22);});ctx.globalAlpha=1;ctx.textAlign='left';
+    if(now<cherryUntil){ctx.fillStyle='rgba(255,91,124,.9)';ctx.fillRect(12,canvas.height-24,Math.min(190,((cherryUntil-now)/selected.cherryMs)*190),9);ctx.fillStyle='#fff';ctx.font='700 13px Arial';ctx.fillText(`CHERRY POWER ${Math.ceil((cherryUntil-now)/1000)}s`,12,canvas.height-30);}
+    if(gameState==='playing'){const progress=ramp(now);ctx.fillStyle='rgba(10,13,19,.72)';ctx.fillRect(canvas.width-190,10,178,24);ctx.fillStyle='#fff';ctx.font='800 12px Arial';ctx.textAlign='right';ctx.fillText(elapsed(now)<beginnerGrace?`WARM-UP ${Math.ceil((beginnerGrace-elapsed(now))/1000)}s`:`DANGER RAMP ${Math.round(progress*100)}%`,canvas.width-20,27);ctx.textAlign='left';}
+  }
+  function loop(now){if(!running)return;const dt=Math.min(40,now-lastFrame);lastFrame=now;frames+=1;if(now-lastCherrySpawn>3800){lastCherrySpawn=now;spawnCherry();}movePlayer(now);moveGhosts(now);checkCollisions(now);updateHud(now);draw(now);if(running)raf=requestAnimationFrame(loop);}
+  loop(runStartedAt);
+}
 function gdWaveLegacy(){let p={x:110,y:250,w:28,h:28},x=0,last=performance.now(),old=false,checkpoint=0;const total=4200;function draw(){ctx.fillStyle='#130d3d';ctx.fillRect(0,0,800,500);ctx.strokeStyle='rgba(117,255,240,.18)';for(let gx=0;gx<800;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,500);ctx.stroke()}ctx.fillStyle='#ff4f9a';for(let i=0;i<14;i++){const ox=560+i*250-x;const gap=125+Math.sin(i*1.7)*55;ctx.beginPath();ctx.moveTo(ox,0);ctx.lineTo(ox+52,gap-22);ctx.lineTo(ox+104,0);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(ox,500);ctx.lineTo(ox+52,gap+220);ctx.lineTo(ox+104,500);ctx.closePath();ctx.fill()}ctx.fillStyle='#ffdc4a';ctx.fillRect(p.x,p.y,p.w,p.h);ctx.fillStyle='white';ctx.font='bold 13px Arial';ctx.fillText(`WAVE RUN · ${practiceMode?'PRACTICE':'NORMAL'}`,20,28);ctx.fillText(`${Math.min(100,Math.floor(x/total*100))}%`,735,28)}function loop(now){if(!running)return;const dt=Math.min(.035,(now-last)/1000);last=now;const up=keys.Space||keys.ArrowUp||keys.KeyW;p.y+= (up?-335:335)*dt;x+=300*dt;const progress=Math.min(100,Math.floor(x/total*100));if(p.y<8||p.y+p.h>492){if(practiceMode){x=Math.floor(x/600)*600;p.y=250;showPracticeCheckpoint();}else{end(`WAVE RUN ended at ${progress}%.`);return}}if(x>=total){end('WAVE RUN complete! 100%');return}draw();raf=requestAnimationFrame(loop)}raf=requestAnimationFrame(loop)}
 function gdWaveEasy(){let p={x:110,y:250,w:28,h:28},x=0,last=performance.now();const total=4200;function draw(){ctx.fillStyle='#130d3d';ctx.fillRect(0,0,800,500);ctx.strokeStyle='rgba(117,255,240,.18)';for(let gx=0;gx<800;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,500);ctx.stroke()}ctx.fillStyle='#ff4f9a';for(let i=0;i<18;i++){const ox=560+i*250-x,gap=125+Math.sin(i*1.7)*55;ctx.beginPath();ctx.moveTo(ox,0);ctx.lineTo(ox+52,gap-22);ctx.lineTo(ox+104,0);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(ox,500);ctx.lineTo(ox+52,gap+220);ctx.lineTo(ox+104,500);ctx.closePath();ctx.fill()}ctx.fillStyle='#ffdc4a';ctx.fillRect(p.x,p.y,p.w,p.h);ctx.fillStyle='white';ctx.font='bold 13px Audiowide,Arial';ctx.fillText(`WAVE RUN · ${practiceMode?'PRACTICE':'NORMAL'}`,20,28);ctx.fillText(`${Math.min(100,Math.floor(x/total*100))}%`,735,28)}function loop(now){if(!running)return;const dt=Math.min(.035,(now-last)/1000);last=now;const up=keys.Space||keys.ArrowUp||keys.KeyW;p.y+=(up?-335:335)*dt;x+=300*dt;const progress=Math.min(100,Math.floor(x/total*100));let hit=false;for(let i=0;i<18;i++){const ox=560+i*250-x,gap=125+Math.sin(i*1.7)*55;if(p.x+p.w>ox&&p.x<ox+104&&(p.y<gap-16||p.y+p.h>gap+224)){hit=true;break}}if(hit||p.y<8||p.y+p.h>492){if(practiceMode){x=Math.floor(x/600)*600;p.y=250;showPracticeCheckpoint();}else{end(`WAVE RUN ended at ${progress}%.`);return}}if(x>=total){end('WAVE RUN complete! 100%');return}draw();raf=requestAnimationFrame(loop)}raf=requestAnimationFrame(loop)}
 function dinoHitboxMode(){
@@ -144,4 +251,4 @@ function gdWave(){
     if(distance>=total){end('WAVE RUN complete! 100%');return}draw();raf=requestAnimationFrame(loop)
   }raf=requestAnimationFrame(loop)
 }
-startBtn.addEventListener('click',()=>{overlay.hidden=true;setScore(0);running=true;cancelAnimationFrame(raf);if(game==='gd'&&gdLevel==='wave')gdWave();else ({pacman:pacmanSmooth,blocks,football,dino:dinoHitboxMode,gd:gdBeginner}[game]||pacmanSmooth)()});
+startBtn.addEventListener('click',()=>{overlay.hidden=true;setScore(0);running=true;cancelAnimationFrame(raf);if(game==='gd'&&gdLevel==='wave')gdWave();else ({pacman:pelletDash,blocks,football,dino:dinoHitboxMode,gd:gdBeginner}[game]||pelletDash)()});

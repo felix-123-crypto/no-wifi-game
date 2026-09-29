@@ -121,6 +121,7 @@
       font-size: 10px;
       letter-spacing: 1px;
     }
+    .food-help { margin-top: 4px; color: rgba(255,255,255,.82); font-size: 8px; letter-spacing: .35px; }
 
     .settings-button {
       position: absolute;
@@ -215,10 +216,10 @@
     .inventory-cell.food-cell:hover { background: #fff5cf; }
     .craft-order-label { margin: 10px 0 5px; color: var(--red); font-size: 11px; letter-spacing: 1px; }
     .craft-order { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .craft-slot { min-height: 45px; border: 2px dashed #a6adba; background: #f5f6f7; color: #8892a2; cursor: pointer; font-weight: 700; }
+    .craft-slot { min-height: 45px; border: 2px dashed #a6adba; background: #f5f6f7; color: #8892a2; cursor: pointer; font-weight: 700; touch-action: none; }
     .craft-slot.filled { border-style: solid; border-color: var(--ink); background: #fff5cf; color: var(--ink); font-size: 18px; }
     .craft-sources { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0; }
-    .craft-source { padding: 5px 7px; border: 1px solid #a6adba; background: #fff; color: var(--ink); cursor: grab; font-size: 10px; }
+    .craft-source { padding: 5px 7px; border: 1px solid #a6adba; background: #fff; color: var(--ink); cursor: grab; font-size: 10px; touch-action: none; }
     .craft-source:active { cursor: grabbing; }
     .craft-order-status { min-height: 15px; margin: 4px 0; color: #536078; font: 400 11px Georgia, serif; }
     .craft-order-button, .crafting-panel > button:last-child { width: 100%; margin-top: 8px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); cursor: pointer; }
@@ -630,6 +631,7 @@
         <div class="survival-row"><span>HEALTH</span><span class="survival-meter"><i id="health-meter"></i></span><strong id="health-value">100</strong></div>
         <div class="survival-row hunger"><span>HUNGER</span><span class="survival-meter"><i id="hunger-meter"></i></span><strong id="hunger-value">100</strong></div>
         <div class="food-badge"><span>FOOD IN PACK</span><strong id="food-count">0</strong></div>
+        <div class="food-help">DEFEAT MOBS WITH F / ATTACK TO LOOT MEAT OR BERRIES</div>
       </div>
 
       <div class="quest-card">
@@ -690,7 +692,7 @@
 
     <section class="crafting-panel" id="crafting-panel" hidden aria-label="Crafting recipes">
       <h2>CRAFTING</h2>
-      <p>YOUR RECIPE BOOK IS AUTOMATICALLY UNLOCKED. Drag ingredients into order, then craft.</p>
+      <p>YOUR RECIPE BOOK IS AUTOMATICALLY UNLOCKED. Drag ingredients into order, then craft. On touch screens, press an ingredient and release it over a slot.</p>
       <div class="recipe-book-title"><span>RECIPE BOOK</span><em>UNLOCKED</em></div>
       <div class="recipe-book" id="recipe-book-list" aria-label="Unlocked recipes"></div>
       <div class="inventory-title">BACKPACK · 14 SLOTS</div>

@@ -181,6 +181,7 @@
   let lastLookX = 0;
   let lastLookY = 0;
   let draggingMouse = false;
+  let draggingCraftItem = null;
   let settingsOpen = false;
   let settingsWasRunning = false;
   let craftingOpen = false;
@@ -980,7 +981,9 @@
     if (!running) return;
     // Keep keyboard movement and camera controls separate: A/D strafe, while
     // the left/right arrows rotate the view instead of pushing the player.
-    const lookInput = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
+    // The camera's positive yaw turns visually to the left in this renderer,
+    // so invert the arrow mapping to keep LEFT and RIGHT intuitive.
+    const lookInput = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0);
     if (lookInput) player.yaw += lookInput * 2.65 * deltaTime;
     let forwardInput = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - touchMove.y;
     let strafeInput = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + touchMove.x;
@@ -1286,6 +1289,11 @@
       chip.addEventListener("dragstart", function (event) {
         event.dataTransfer.setData("text/plain", chip.dataset.item);
       });
+      chip.addEventListener("pointerdown", function (event) {
+        draggingCraftItem = chip.dataset.item;
+        if (event.pointerType === "touch") event.preventDefault();
+      });
+      chip.addEventListener("dragend", function () { draggingCraftItem = null; });
       chip.addEventListener("click", function () {
         const empty = recipeOrder.indexOf(null);
         if (empty >= 0) setCraftSlot(empty, chip.dataset.item);
@@ -1813,6 +1821,16 @@
         craftRecipe(matchingRecipe);
       });
     }
+    document.addEventListener("pointerup", function (event) {
+      if (!draggingCraftItem) return;
+      const slot = event.target && event.target.closest ? event.target.closest("[data-craft-slot]") : null;
+      if (slot) {
+        event.preventDefault();
+        setCraftSlot(Number(slot.dataset.craftSlot), draggingCraftItem);
+      }
+      draggingCraftItem = null;
+    });
+    document.addEventListener("pointercancel", function () { draggingCraftItem = null; });
     survivalToggle.addEventListener("change", function () {
       survivalMode = survivalToggle.checked;
       if (survivalMode) {

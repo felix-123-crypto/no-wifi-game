@@ -2,7 +2,7 @@ const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),scoreEl
 const overlay=document.querySelector('#overlay'),startBtn=document.querySelector('#start'),titleEl=document.querySelector('#game-title'),subEl=document.querySelector('#game-subtitle'),kickEl=document.querySelector('#game-kicker'),howEl=document.querySelector('#how');
 const game=new URLSearchParams(location.search).get('game')||'pacman';let running=false,score=0,raf,keys={};
 let gdLevel='stereo',practiceMode=false;const gdConfigs={stereo:{label:'STEREO MADNESS',speed:255,next:1.35,finish:460,platforms:false},backtrack:{label:'BACK ON TRACK',speed:300,next:1.12,finish:145,platforms:true},polargeist:{label:'POLARGEIST',speed:340,next:.92,finish:170,platforms:true}};const gdOptions=document.querySelector('#gd-options');if(game==='gd'&&gdOptions){gdOptions.hidden=false;document.querySelector('#gd-level').addEventListener('change',e=>{gdLevel=e.target.value;});document.querySelector('#gd-practice').addEventListener('change',e=>{practiceMode=e.target.checked;});}const dinoOptions=document.querySelector('#dino-options');if(game==='dino'&&dinoOptions){dinoOptions.hidden=false;}
-const pacmanOptions=document.querySelector('#pacman-options');let pacmanDifficulty=1;if(game==='pacman'&&pacmanOptions){pacmanOptions.hidden=false;const slider=document.querySelector('#pacman-difficulty');const label=document.querySelector('#pacman-difficulty-label');const update=()=>{pacmanDifficulty=Math.max(1,Math.min(100,Number(slider.value)||1));label.textContent=`${pacmanDifficulty===1?'EXTRA EASY':`LEVEL ${pacmanDifficulty}`} · ${pacmanDifficulty}×`;};slider.addEventListener('input',update);update();document.body.classList.add('pacman-page');}
+const pacmanOptions=document.querySelector('#pacman-options');let pacmanDifficulty=1;const pacmanScoreMultiplier=level=>Math.min(4,1+Math.floor((level-1)/25));if(game==='pacman'&&pacmanOptions){pacmanOptions.hidden=false;const slider=document.querySelector('#pacman-difficulty');const label=document.querySelector('#pacman-difficulty-label');const update=()=>{pacmanDifficulty=Math.max(1,Math.min(100,Number(slider.value)||1));label.textContent=`${pacmanDifficulty===1?'EXTRA EASY':`LEVEL ${pacmanDifficulty}`} · ${pacmanScoreMultiplier(pacmanDifficulty)}× SCORE`;};slider.addEventListener('input',update);update();document.body.classList.add('pacman-page');}
 const meta={pacman:['Maze Muncher','ARCADE CLASSIC','Clear the maze. Dodge the ghosts. Chase a new high score.','Use arrow keys or WASD. Collect dots, grab cherries, and clear every corridor before you lose your lives.'],blocks:['Block Quest','CREATIVE MODE','Dig deep, gather gems, and build your way to the sky.','Move with arrows or WASD. Click blocks to mine them, then press Space to place a block nearby.'],football:['Pocket Football','SPORTS CHALLENGE','Aim your shot. Beat the keeper. Find the top corner.','Move the target with arrows or WASD, then press Space or tap the game to shoot.'],dino:['Chrome Dino','ARCADE RUNNER','Jump the cacti and survive as the desert gets faster.','Press Space, ArrowUp, or W to jump. The longer you survive, the faster it gets.'],gd:['Cube Rush','GEOMETRY RUNNER','Choose a premade level, chase 100%, or practice from checkpoints.','Pick Stereo Madness, Back on Track, Polargeist, or Wave Run. Hold Space, ArrowUp, or W to control your jump or wave.']};
 [titleEl.textContent,kickEl.textContent,subEl.textContent,howEl.textContent]=meta[game]||meta.pacman;document.title=`${titleEl.textContent} — Recess Arcade`;
 const touchPad=document.querySelector('#touch');
@@ -127,6 +127,7 @@ function pelletDash(){
   const livesEl=document.querySelector('#pacman-lives'),pelletsEl=document.querySelector('#pacman-pellets'),timeEl=document.querySelector('#pacman-time');
   [livesBox,pelletsBox,timeBox].forEach(node=>{if(node)node.hidden=false;});
   const level=Math.max(1,Math.min(100,pacmanDifficulty));
+  const scoreMultiplier=pacmanScoreMultiplier(level);
   const pressure=(level-1)/99;
   const selected={playerDelay:Math.round(112+pressure*24),ghostDelay:Math.round(620-pressure*520),chaseChance:.02+pressure*.9,cherryMs:30000};
   const beginnerGrace=20000,rampDuration=60000;
@@ -162,7 +163,7 @@ function pelletDash(){
     const next=cellAt(player.x+player.wanted.x,player.y+player.wanted.y);if(next&&canMove(next.x,next.y))player.dir=player.wanted;
     const step=cellAt(player.x+player.dir.x,player.y+player.dir.y);if(!step||!canMove(step.x,step.y))return;
     player.x=step.x;player.y=step.y;const cell=grid[player.y][player.x];
-    if(cell==='.'){grid[player.y][player.x]=' ';pelletsLeft-=1;runScore+=10*level;addFloat(`+${10*level}`,player.x,player.y,'#55e6a5');if(Math.floor(runScore/10)%5===0)window.RecessPoints?.award?.(5,'Maze dots');}
+    if(cell==='.'){grid[player.y][player.x]=' ';pelletsLeft-=1;const points=10*scoreMultiplier;runScore+=points;addFloat(`+${points}`,player.x,player.y,'#55e6a5');if(Math.floor(runScore/10)%5===0)window.RecessPoints?.award?.(5,'Maze dots');}
     if(cell==='C'){grid[player.y][player.x]=' ';cherryUntil=Math.max(cherryUntil,now)+selected.cherryMs;addFloat('+30s',player.x,player.y,'#ff5b7c');}
     if(pelletsLeft<=0){window.RecessPoints?.award?.(75,'Maze cleared');finishRun('YOU WIN',`Maze cleared at difficulty ${level}. Final score: ${Math.floor(runScore)}.`);}
   }
@@ -178,7 +179,7 @@ function pelletDash(){
   function checkCollisions(now){
     if(now<hitCooldown)return;
     for(let i=ghosts.length-1;i>=0;i-=1){const ghost=ghosts[i];if(ghost.x!==player.x||ghost.y!==player.y)continue;
-      if(now<cherryUntil){runScore+=30*level;addFloat(`+${30*level}`,player.x,player.y,'#55e6a5');ghosts.splice(i,1);continue;}
+      if(now<cherryUntil){const points=30*scoreMultiplier;runScore+=points;addFloat(`+${points}`,player.x,player.y,'#55e6a5');ghosts.splice(i,1);continue;}
       lives-=1;hitCooldown=now+1300;player.x=1;player.y=1;player.dir={x:0,y:0};player.wanted={x:0,y:0};if(lives<=0){finishRun('GAME OVER',`Final score: ${Math.floor(runScore)}. Try a different route at difficulty ${level}.`);}return;
     }
   }

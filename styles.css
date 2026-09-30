@@ -57,3 +57,22 @@ body:not(.retro-theme).voxel-body .topbar{background:rgba(5,8,6,.96)!important}b
   .touch-controls.jump-only button:not([data-key="Space"]){display:none}
   .touch-controls.jump-only button[data-key="Space"]{min-width:120px;font-size:11px;letter-spacing:.08em}
 }
+
+.blocks-options{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(20,33,61,.9);color:#fff;text-align:left}
+.blocks-options[hidden]{display:none}
+.blocks-home-card{width:min(460px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;padding:22px;background:#14213d;border:2px solid #fff;box-shadow:8px 8px 0 #ff5a4e}
+.blocks-home-card h2{margin:2px 0 8px;color:#ffd23f;font-size:30px;letter-spacing:-1px}
+.blocks-home-card h3{margin:18px 0 7px;color:#8fffae;font-size:11px;letter-spacing:2px}
+.blocks-home-copy{margin:0;color:#e6ebf3;font:400 14px Georgia,serif;line-height:1.4}
+.block-world-list{display:grid;gap:7px;margin-bottom:12px}
+.block-world-empty{padding:11px;border:1px dashed rgba(255,255,255,.45);color:#ccd4e2;font:400 12px Georgia,serif}
+.block-world-card{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:9px 10px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;text-align:left}
+.block-world-card strong{font-size:13px}.block-world-card span{color:#c9d3e2;font-size:10px}.block-world-card.selected{border-color:#ffd23f;background:rgba(255,210,63,.18)}
+.blocks-home-card label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;color:#e6ebf3;font-size:11px;letter-spacing:.7px}
+.blocks-home-card input[type=text],.blocks-home-card select{width:58%;padding:8px;border:1px solid #a9b5c7;background:#fff;color:#14213d;font:600 12px Arial,sans-serif}
+.blocks-home-card input[type=checkbox]{accent-color:#ff5a4e}
+.block-world-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}
+.block-world-actions button,.blocks-home-card>#start-block-world{padding:10px 8px;border:2px solid #fff;background:#ffd23f;color:#14213d;font-weight:800;cursor:pointer}
+.block-world-actions button:disabled,.blocks-home-card>#start-block-world:disabled{cursor:not-allowed;opacity:.45}
+.blocks-home-card>#start-block-world{width:100%;margin-top:8px;background:#8fffae}
+.blocks-home-card small{display:block;margin-top:10px;color:#ffd23f;font:400 11px Georgia,serif}

@@ -1,0 +1,1333 @@
+=== HTML DOCUMENT START ===
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pellet Dash</title>
+  
+=== CSS ===
+
+    :root {
+      color-scheme: dark;
+      --bg: #14101f;
+      --panel: #20182d;
+      --panel-2: #151827;
+      --line: #493a66;
+      --text: #fff8ec;
+      --muted: #c8bed9;
+      --accent: #ffe45c;
+      --accent-2: #ff8a4c;
+      --danger: #ff4f8b;
+      --good: #3ff0b5;
+      --blue: #47c8ff;
+      --violet: #9b6dff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(255, 228, 92, 0.16), transparent 22rem),
+        radial-gradient(circle at 82% 20%, rgba(71, 200, 255, 0.14), transparent 24rem),
+        radial-gradient(circle at 80% 92%, rgba(255, 79, 139, 0.13), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(1080px, 100%);
+      display: grid;
+      grid-template-columns: minmax(320px, 760px) minmax(260px, 320px);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .game-wrap,
+    .side {
+      background: linear-gradient(180deg, rgba(37, 28, 54, 0.96), rgba(19, 23, 39, 0.96));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .game-wrap {
+      padding: 14px;
+      position: relative;
+    }
+
+    .game-wrap:fullscreen {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      padding: 18px;
+      background: linear-gradient(180deg, rgba(37, 28, 54, 1), rgba(11, 16, 32, 1));
+    }
+
+    .game-wrap:fullscreen canvas {
+      width: auto;
+      height: min(100%, calc(100vh - 112px));
+      max-width: 100%;
+      justify-self: center;
+      align-self: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #0b1020;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 2px rgba(71, 200, 255, 0.08);
+      image-rendering: pixelated;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 11px 12px;
+      min-height: 62px;
+      background: linear-gradient(180deg, #251d35, #141927);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .stat.flash-good {
+      border-color: var(--good);
+      box-shadow: 0 0 0 3px rgba(85, 230, 165, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .stat.flash-bad {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(255, 91, 124, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0;
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+
+    .value {
+      font-weight: 800;
+      font-size: clamp(1.15rem, 2vw, 1.55rem);
+      white-space: nowrap;
+      color: var(--accent);
+      text-shadow: 0 0 16px rgba(255, 228, 92, 0.2);
+    }
+
+    .side {
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: grid;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .control-choice {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .key-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    kbd {
+      min-width: 34px;
+      text-align: center;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid #5b4a78;
+      background: #161b2d;
+      color: var(--text);
+      box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.08);
+      font-weight: 800;
+    }
+
+    .difficulty {
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 0;
+      margin: 14px 0;
+    }
+
+    .difficulty h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .difficulty-control {
+      display: grid;
+      gap: 10px;
+    }
+
+    .difficulty-value {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+    }
+
+    .difficulty-value strong {
+      color: var(--accent);
+      font-size: 1.35rem;
+    }
+
+    .difficulty-slider {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .difficulty-actions {
+      display: grid;
+      grid-template-columns: 42px 1fr 42px;
+      gap: 8px;
+    }
+
+    .difficulty-actions input {
+      min-width: 0;
+      min-height: 40px;
+      border-radius: 6px;
+      border: 1px solid #5b4a78;
+      background: #151827;
+      color: var(--text);
+      font: inherit;
+      font-weight: 800;
+      text-align: center;
+      padding: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid #5b4a78;
+      background: linear-gradient(180deg, #302342, #171d31);
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 40px;
+      padding: 8px 10px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 5px 16px rgba(0, 0, 0, 0.16);
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    button:hover,
+    button:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 228, 92, 0.14), 0 8px 20px rgba(0, 0, 0, 0.22);
+    }
+
+    button.active {
+      background: #2a230f;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .restart {
+      width: 100%;
+      margin-top: 8px;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      border-color: var(--accent);
+      color: #261104;
+      box-shadow: 0 10px 24px rgba(255, 138, 76, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.36);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .button-row .restart {
+      margin-top: 0;
+    }
+
+    .message {
+      position: absolute;
+      inset: 84px 24px 24px;
+      display: none;
+      place-items: center;
+      text-align: center;
+      background: rgba(16, 12, 27, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 20px;
+      backdrop-filter: blur(5px);
+    }
+
+    .message.show {
+      display: grid;
+    }
+
+    .message h2 {
+      margin: 0 0 10px;
+      font-size: clamp(1.55rem, 4vw, 3rem);
+    }
+
+    .message p {
+      max-width: 42ch;
+      margin-inline: auto;
+    }
+
+    .start-goal {
+      color: var(--text);
+      font-weight: 800;
+      font-size: clamp(1.05rem, 2vw, 1.22rem);
+    }
+
+    .start-list {
+      display: grid;
+      gap: 8px;
+      max-width: 460px;
+      margin: 16px auto;
+      padding: 0;
+      list-style: none;
+      text-align: left;
+    }
+
+    .start-list li {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      background: rgba(18, 24, 35, 0.76);
+      padding: 10px 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .start-list strong {
+      color: var(--text);
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      top: 96px;
+      transform: translate(-50%, -8px);
+      z-index: 2;
+      pointer-events: none;
+      min-width: 190px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(10, 13, 19, 0.88);
+      color: var(--text);
+      text-align: center;
+      font-weight: 900;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .toast.good {
+      color: var(--good);
+      border-color: rgba(85, 230, 165, 0.5);
+    }
+
+    .toast.bad {
+      color: var(--danger);
+      border-color: rgba(255, 91, 124, 0.5);
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex: 0 0 auto;
+      box-shadow: 0 0 12px rgba(255, 228, 92, 0.28);
+    }
+
+    .dot.big {
+      width: 18px;
+      height: 18px;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 91, 124, 0.12);
+    }
+
+    .dot.ghost {
+      border-radius: 50% 50% 4px 4px;
+      background: var(--blue);
+    }
+
+    .dot.player {
+      background: var(--accent);
+      position: relative;
+      box-shadow: 0 0 12px rgba(255, 228, 92, 0.38);
+    }
+
+    .dot.player::before {
+      content: "";
+      position: absolute;
+      right: 3px;
+      top: 3px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #2a1900;
+    }
+
+    .dot.player::after {
+      content: "";
+      position: absolute;
+      right: -2px;
+      top: 3px;
+      width: 9px;
+      height: 9px;
+      background: var(--panel-2);
+      clip-path: polygon(100% 50%, 0 0, 0 100%);
+    }
+
+    @media (max-width: 880px) {
+      body {
+        padding: 14px;
+      }
+
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        order: -1;
+      }
+
+    @media (max-width: 520px) {
+      .hud {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hud .stat:nth-last-child(-n + 2) {
+        grid-column: auto;
+      }
+
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .message {
+        inset: 116px 18px 18px;
+      }
+
+      .toast {
+        top: 130px;
+      }
+    }
+  
+=== HTML BODY ===
+
+</head>
+<body>
+  <main class="shell">
+    <section class="game-wrap" aria-label="Pellet Dash game board">
+      <div class="hud" aria-live="polite">
+        <div class="stat">
+          <div class="label">Score</div>
+          <div class="value" id="score">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Lives</div>
+          <div class="value" id="lives">3</div>
+        </div>
+        <div class="stat">
+          <div class="label">Pellets Left</div>
+          <div class="value" id="pellets">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Time</div>
+          <div class="value" id="timer">0:00</div>
+        </div>
+      </div>
+      <canvas id="board" width="784" height="672"></canvas>
+      <div class="message show" id="message">
+        <div>
+          <h2 id="messageTitle">Pellet Dash</h2>
+          <div id="messageText">
+            <p class="start-goal">Goal: collect every pellet before you lose 3 lives.</p>
+            <ul class="start-list">
+              <li><strong>Move:</strong> choose WASD or Arrow Keys, then steer through the maze.</li>
+              <li><strong>Score:</strong> pellets give 10 x difficulty. Powered ghosts give 30 x difficulty.</li>
+              <li><strong>Cherry:</strong> each cherry adds 30 seconds of ghost-eating power.</li>
+              <li><strong>Ramp:</strong> the first 20 seconds are beginner-friendly, then ghosts gradually speed up.</li>
+            </ul>
+          </div>
+          <button class="restart" id="messageButton" type="button">Start Game</button>
+        </div>
+      </div>
+      <div class="toast" id="toast" aria-live="polite"></div>
+    </section>
+
+    <aside class="side">
+      <h1>Pellet Dash</h1>
+      <p><strong>Goal:</strong> clear every pellet. <strong>Danger:</strong> ghosts cost a life unless cherry power is active. <strong>Ramp:</strong> the first 20 seconds are calmer, then ghosts gradually build up to your chosen difficulty.</p>
+
+      <div class="controls" aria-label="Controls">
+        <div class="control-choice" aria-label="Movement key choice">
+          <button class="active" id="wasdMode" type="button">WASD</button>
+          <button id="arrowMode" type="button">Arrow Keys</button>
+        </div>
+        <div id="controlHelp">
+          <div class="key-row"><kbd>W</kbd><span>Move up</span></div>
+          <div class="key-row"><kbd>A</kbd><span>Move left</span></div>
+          <div class="key-row"><kbd>S</kbd><span>Move down</span></div>
+          <div class="key-row"><kbd>D</kbd><span>Move right</span></div>
+        </div>
+      </div>
+
+      <section class="difficulty" aria-label="Difficulty selection">
+        <h2>Difficulty</h2>
+        <div class="difficulty-control">
+          <div class="difficulty-value">
+            <span>Level</span>
+            <strong id="difficultyLabel">Extra Easy (1 / 100) x1 score</strong>
+          </div>
+          <input class="difficulty-slider" id="difficultySlider" type="range" min="1" max="100" value="1" aria-label="Difficulty level">
+          <div class="difficulty-actions">
+            <button id="difficultyDown" type="button" aria-label="Lower difficulty">-</button>
+            <input id="difficultyNumber" type="number" min="1" max="100" value="1" aria-label="Difficulty number">
+            <button id="difficultyUp" type="button" aria-label="Raise difficulty">+</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="button-row">
+        <button class="restart" id="restart" type="button">Restart</button>
+        <button class="restart" id="fullscreen" type="button">Full Screen</button>
+      </div>
+
+      <div class="legend" aria-label="Game pieces">
+        <div class="chip"><span class="dot player"></span><span>You</span></div>
+        <div class="chip"><span class="dot"></span><span>Pellet</span></div>
+        <div class="chip"><span class="dot big"></span><span>Cherry</span></div>
+        <div class="chip"><span class="dot ghost"></span><span>Ghost</span></div>
+      </div>
+    </aside>
+  </main>
+
+  
+=== JAVASCRIPT ===
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const livesEl = document.getElementById("lives");
+    const pelletsEl = document.getElementById("pellets");
+    const timerEl = document.getElementById("timer");
+    const scoreStat = scoreEl.closest(".stat");
+    const livesStat = livesEl.closest(".stat");
+    const message = document.getElementById("message");
+    const messageTitle = document.getElementById("messageTitle");
+    const messageText = document.getElementById("messageText");
+    const messageButton = document.getElementById("messageButton");
+    const toast = document.getElementById("toast");
+    const restartButton = document.getElementById("restart");
+    const fullscreenButton = document.getElementById("fullscreen");
+    const wasdModeButton = document.getElementById("wasdMode");
+    const arrowModeButton = document.getElementById("arrowMode");
+    const controlHelp = document.getElementById("controlHelp");
+    const difficultyLabel = document.getElementById("difficultyLabel");
+    const difficultySlider = document.getElementById("difficultySlider");
+    const difficultyNumber = document.getElementById("difficultyNumber");
+    const difficultyDown = document.getElementById("difficultyDown");
+    const difficultyUp = document.getElementById("difficultyUp");
+
+    const tile = 28;
+    const wall = "#3950a3";
+    const wallEdge = "#47c8ff";
+    const path = "#101729";
+
+    const map = [
+      "############################",
+      "#P...........##...........C#",
+      "#.####.#####.##.#####.####.#",
+      "#..........................#",
+      "#.##.##.###.####.###.##.##.#",
+      "#....##.....G..G.....##....#",
+      "####.##.###.####.###.##.####",
+      "#..........................#",
+      "#.####.##.########.##.####.#",
+      "#C.....##....##....##.....C#",
+      "######.#####.##.#####.######",
+      "#..........................#",
+      "#.###.####.##..##.####.###.#",
+      "#...G.......##.......G.....#",
+      "#.###.####.##..##.####.###.#",
+      "#..........................#",
+      "#####.##.###.####.###.##.###",
+      "#C....##.....G..G....##...C#",
+      "#.##.##.###.####.###.##.##.#",
+      "#..........................#",
+      "#.####.#####.##.#####.####.#",
+      "#....##.....####.....##....#",
+      "#..........C....C..........#",
+      "############################"
+    ];
+
+    const cols = map[0].length;
+    const rows = map.length;
+    canvas.width = cols * tile;
+    canvas.height = rows * tile;
+    canvas.style.aspectRatio = `${cols} / ${rows}`;
+
+    const difficulties = Array.from({ length: 100 }, (_, index) => {
+      const level = index + 1;
+      const pressure = index / 99;
+      return {
+        level,
+        name: level === 1 ? "Extra Easy" : `Level ${level}`,
+        scoreMultiplier: level,
+        playerDelay: Math.round(112 + pressure * 24),
+        ghostDelay: Math.round(620 - pressure * 520),
+        chaseChance: 0.02 + pressure * 0.9,
+        cherryMs: 30000
+      };
+    });
+
+    const ghostColors = ["#47c8ff", "#ff4f8b", "#9b6dff", "#ff8a4c", "#3ff0b5"];
+    const dirs = [
+      { x: 0, y: -1 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 1, y: 0 }
+    ];
+    const cherrySpawnInterval = 3800;
+    const maxCherries = 8;
+    const beginnerGraceMs = 20000;
+    const rampDurationMs = 60000;
+    const deathDuration = 1150;
+
+    let difficultyLevel = 1;
+    let grid = [];
+    let player;
+    let ghosts = [];
+    let score = 0;
+    let lives = 3;
+    let pelletsLeft = 0;
+    let cherryUntil = 0;
+    let gameState = "ready";
+    let controlMode = "wasd";
+    let wantedDir = { x: 0, y: 0 };
+    let lastPlayerMove = 0;
+    let lastGhostMove = 0;
+    let lastFrame = 0;
+    let hitCooldownUntil = 0;
+    let deathStartedAt = 0;
+    let lastCherrySpawn = 0;
+    let runStartedAt = 0;
+    let elapsedBeforeStart = 0;
+    let finishedElapsed = 0;
+    let audioContext = null;
+    let toastTimer = 0;
+    let floatingTexts = [];
+
+    function currentDifficulty() {
+      return difficulties[difficultyLevel - 1];
+    }
+
+    function rampProgress(now) {
+      if (!runStartedAt) return 0;
+      const elapsed = now - runStartedAt;
+      if (elapsed <= beginnerGraceMs) return 0;
+      return Math.min(1, (elapsed - beginnerGraceMs) / rampDurationMs);
+    }
+
+    function activeDifficulty(now) {
+      const selected = currentDifficulty();
+      const progress = rampProgress(now);
+      return {
+        ...selected,
+        ghostDelay: Math.round(selected.ghostDelay + (760 - selected.ghostDelay) * (1 - progress)),
+        chaseChance: selected.chaseChance * (0.18 + progress * 0.82)
+      };
+    }
+
+    function elapsedMs(now = performance.now()) {
+      if (gameState === "won" || gameState === "lost") return finishedElapsed;
+      if ((gameState !== "playing" && gameState !== "dying") || !runStartedAt) return elapsedBeforeStart;
+      return elapsedBeforeStart + now - runStartedAt;
+    }
+
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${minutes}:${seconds}`;
+    }
+
+    function updateDifficultyControls() {
+      const settings = currentDifficulty();
+      difficultyLabel.textContent = `${settings.name} (${difficultyLevel} / 100) x${settings.scoreMultiplier} score`;
+      difficultySlider.value = difficultyLevel;
+      difficultyNumber.value = difficultyLevel;
+    }
+
+    function setDifficulty(level, shouldReset = true) {
+      difficultyLevel = Math.max(1, Math.min(100, Number(level) || 1));
+      updateDifficultyControls();
+      if (shouldReset) resetGame(false);
+    }
+
+    function resetGame(startNow = true) {
+      grid = map.map((row, y) => row.split("").map((cell, x) => {
+        if (cell === "#") return "#";
+        if (cell === "P") player = { x, y, dir: { x: 0, y: 0 }, mouth: 0 };
+        if (cell === "P" || cell === "G") return " ";
+        return cell === "C" ? "C" : ".";
+      }));
+
+      ghosts = [];
+      map.forEach((row, y) => {
+        [...row].forEach((cell, x) => {
+          if (cell === "G") {
+            ghosts.push({
+              x,
+              y,
+              color: ghostColors[ghosts.length % ghostColors.length]
+            });
+          }
+        });
+      });
+
+      score = 0;
+      lives = 3;
+      cherryUntil = 0;
+      elapsedBeforeStart = 0;
+      finishedElapsed = 0;
+      wantedDir = { x: 0, y: 0 };
+      lastPlayerMove = 0;
+      lastGhostMove = 0;
+      hitCooldownUntil = 0;
+      deathStartedAt = 0;
+      lastCherrySpawn = performance.now();
+      runStartedAt = startNow ? performance.now() : 0;
+      floatingTexts = [];
+      hideToast();
+      countPellets();
+      updateHud();
+      gameState = startNow ? "playing" : "ready";
+      if (startNow) hideMessage();
+      else showStartMessage();
+    }
+
+    function countPellets() {
+      pelletsLeft = grid.flat().filter((cell) => cell === ".").length;
+    }
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      livesEl.textContent = lives;
+      pelletsEl.textContent = pelletsLeft;
+      timerEl.textContent = formatTime(elapsedMs());
+    }
+
+    function showMessage(title, text, buttonText) {
+      messageTitle.textContent = title;
+      messageText.textContent = text;
+      messageButton.textContent = buttonText;
+      message.classList.add("show");
+    }
+
+    function showStartMessage() {
+      messageTitle.textContent = "Pellet Dash";
+      messageText.innerHTML = `
+        <p class="start-goal">Goal: collect every pellet before you lose 3 lives.</p>
+        <ul class="start-list">
+          <li><strong>Move:</strong> choose WASD or Arrow Keys, then steer through the maze.</li>
+          <li><strong>Score:</strong> pellets give 10 x difficulty. Powered ghosts give 30 x difficulty.</li>
+          <li><strong>Cherry:</strong> each cherry adds 30 seconds of ghost-eating power.</li>
+          <li><strong>Ramp:</strong> the first 20 seconds are beginner-friendly, then ghosts gradually speed up.</li>
+        </ul>
+      `;
+      messageButton.textContent = "Start Game";
+      message.classList.add("show");
+    }
+
+    function hideMessage() {
+      message.classList.remove("show");
+    }
+
+    function flashStat(stat, kind) {
+      if (!stat) return;
+      const className = kind === "bad" ? "flash-bad" : "flash-good";
+      stat.classList.remove("flash-good", "flash-bad");
+      window.setTimeout(() => {
+        stat.classList.add(className);
+        window.setTimeout(() => stat.classList.remove(className), 280);
+      }, 0);
+    }
+
+    function showToast(text, kind = "good") {
+      toast.textContent = text;
+      toast.className = `toast show ${kind}`;
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(hideToast, 950);
+    }
+
+    function hideToast() {
+      window.clearTimeout(toastTimer);
+      toast.className = "toast";
+      toast.textContent = "";
+    }
+
+    function addFloatingText(text, x, y, color) {
+      floatingTexts.push({
+        text,
+        x: x * tile + tile / 2,
+        y: y * tile + tile / 2,
+        color,
+        born: performance.now(),
+        lifetime: 900
+      });
+    }
+
+    function playPointSound(kind = "pellet") {
+      try {
+        audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const now = audioContext.currentTime;
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(kind === "ghost" ? 660 : 440, now);
+        oscillator.frequency.exponentialRampToValueAtTime(kind === "ghost" ? 990 : 620, now + 0.08);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + 0.13);
+      } catch (_) {
+        // Browsers may block audio until a user gesture; gameplay still works without sound.
+      }
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.querySelector(".game-wrap").requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (_) {
+        showToast("Fullscreen is blocked by this browser", "bad");
+      }
+    }
+
+    function updateFullscreenButton() {
+      fullscreenButton.textContent = document.fullscreenElement ? "Exit Full Screen" : "Full Screen";
+    }
+
+    function unlockAudio() {
+      try {
+        audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+      } catch (_) {
+        audioContext = null;
+      }
+    }
+
+    function beginRun() {
+      unlockAudio();
+      gameState = "playing";
+      runStartedAt = performance.now();
+      lastGhostMove = runStartedAt;
+      hideMessage();
+      updateHud();
+    }
+
+    function setControlMode(mode) {
+      controlMode = mode;
+      wasdModeButton.classList.toggle("active", mode === "wasd");
+      arrowModeButton.classList.toggle("active", mode === "arrows");
+      controlHelp.innerHTML = mode === "arrows"
+        ? `
+          <div class="key-row"><kbd>↑</kbd><span>Move up</span></div>
+          <div class="key-row"><kbd>←</kbd><span>Move left</span></div>
+          <div class="key-row"><kbd>↓</kbd><span>Move down</span></div>
+          <div class="key-row"><kbd>→</kbd><span>Move right</span></div>
+        `
+        : `
+          <div class="key-row"><kbd>W</kbd><span>Move up</span></div>
+          <div class="key-row"><kbd>A</kbd><span>Move left</span></div>
+          <div class="key-row"><kbd>S</kbd><span>Move down</span></div>
+          <div class="key-row"><kbd>D</kbd><span>Move right</span></div>
+        `;
+    }
+
+    function canMove(x, y) {
+      return x >= 0 && x < cols && y >= 0 && y < rows && grid[y][x] !== "#";
+    }
+
+    function sameDir(a, b) {
+      return a.x === b.x && a.y === b.y;
+    }
+
+    function movePlayer(now) {
+      if (now - lastPlayerMove < currentDifficulty().playerDelay) return;
+      lastPlayerMove = now;
+
+      const nextWanted = { x: player.x + wantedDir.x, y: player.y + wantedDir.y };
+      if (canMove(nextWanted.x, nextWanted.y)) {
+        player.dir = wantedDir;
+      }
+
+      const next = { x: player.x + player.dir.x, y: player.y + player.dir.y };
+      if (canMove(next.x, next.y)) {
+        player.x = next.x;
+        player.y = next.y;
+      }
+
+      const cell = grid[player.y][player.x];
+      if (cell === ".") {
+        const points = 10 * currentDifficulty().scoreMultiplier;
+        grid[player.y][player.x] = " ";
+        score += points;
+        pelletsLeft -= 1;
+        playPointSound("pellet");
+        flashStat(scoreStat, "good");
+        addFloatingText(`+${points}`, player.x, player.y, "#55e6a5");
+      } else if (cell === "C") {
+        grid[player.y][player.x] = " ";
+        cherryUntil = Math.max(cherryUntil, now) + currentDifficulty().cherryMs;
+        showToast("+30 seconds cherry power", "good");
+        addFloatingText("+30s", player.x, player.y, "#ff5b7c");
+      }
+
+      if (pelletsLeft === 0 && gameState === "playing") {
+        finishedElapsed = elapsedMs(now);
+        gameState = "won";
+        showMessage("You Win!", `Final score: ${score}. Time: ${formatTime(finishedElapsed)}. Every pellet is gone.`, "Play Again");
+      }
+    }
+
+    function moveGhosts(now) {
+      const settings = activeDifficulty(now);
+      if (now - lastGhostMove < settings.ghostDelay) return;
+      lastGhostMove = now;
+
+      ghosts.forEach((ghost) => {
+        const options = dirs
+          .map((dir) => ({ dir, x: ghost.x + dir.x, y: ghost.y + dir.y }))
+          .filter((option) => canMove(option.x, option.y));
+
+        if (!options.length) return;
+
+        const powered = now < cherryUntil;
+        const ranked = options.sort((a, b) => {
+          const da = Math.abs(a.x - player.x) + Math.abs(a.y - player.y);
+          const db = Math.abs(b.x - player.x) + Math.abs(b.y - player.y);
+          return powered ? db - da : da - db;
+        });
+
+        const chase = Math.random() < settings.chaseChance;
+        const choice = chase ? ranked[0] : ranked[Math.floor(Math.random() * ranked.length)];
+        ghost.x = choice.x;
+        ghost.y = choice.y;
+      });
+    }
+
+    function handleCollisions(now) {
+      if (gameState !== "playing") return;
+
+      for (let index = ghosts.length - 1; index >= 0; index -= 1) {
+        const ghost = ghosts[index];
+        if (ghost.x !== player.x || ghost.y !== player.y) continue;
+
+        if (now < cherryUntil) {
+          const points = 30 * currentDifficulty().scoreMultiplier;
+          score += points;
+          ghosts.splice(index, 1);
+          playPointSound("ghost");
+          flashStat(scoreStat, "good");
+          showToast(`Ghost cleared! +${points}`, "good");
+          addFloatingText(`+${points}`, player.x, player.y, "#55e6a5");
+          updateHud();
+          continue;
+        }
+
+        if (now < hitCooldownUntil) continue;
+
+        lives -= 1;
+        gameState = "dying";
+        deathStartedAt = now;
+        flashStat(livesStat, "bad");
+        showToast(`Life lost! ${Math.max(0, lives)} left`, "bad");
+        addFloatingText("-1 life", player.x, player.y, "#ff5b7c");
+        player.dir = { x: 0, y: 0 };
+        wantedDir = { x: 0, y: 0 };
+        updateHud();
+        return;
+      }
+    }
+
+    function finishDeath(now) {
+      if (gameState !== "dying" || now - deathStartedAt < deathDuration) return;
+
+      if (lives <= 0) {
+        finishedElapsed = elapsedMs(now);
+        gameState = "lost";
+        showMessage("Game Over", `Final score: ${score}. Time: ${formatTime(finishedElapsed)}. Restart and try another route.`, "Try Again");
+        updateHud();
+        return;
+      }
+
+      player.x = 1;
+      player.y = 1;
+      player.dir = { x: 0, y: 0 };
+      wantedDir = { x: 0, y: 0 };
+      hitCooldownUntil = now + 1300;
+      deathStartedAt = 0;
+      gameState = "playing";
+      updateHud();
+    }
+
+    function countCherries() {
+      return grid.flat().filter((cell) => cell === "C").length;
+    }
+
+    function isOccupied(x, y) {
+      return (player.x === x && player.y === y) || ghosts.some((ghost) => ghost.x === x && ghost.y === y);
+    }
+
+    function spawnCherry() {
+      const openTiles = [];
+      for (let y = 0; y < rows; y += 1) {
+        for (let x = 0; x < cols; x += 1) {
+          if (grid[y][x] === " " && !isOccupied(x, y)) {
+            openTiles.push({ x, y });
+          }
+        }
+      }
+
+      if (!openTiles.length) return false;
+      const choice = openTiles[Math.floor(Math.random() * openTiles.length)];
+      grid[choice.y][choice.x] = "C";
+      return true;
+    }
+
+    function updateCherrySpawns(now) {
+      if (now - lastCherrySpawn < cherrySpawnInterval) return;
+      lastCherrySpawn = now;
+
+      if (countCherries() < maxCherries) {
+        spawnCherry();
+      }
+    }
+
+    function drawBoard(now) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < rows; y += 1) {
+        for (let x = 0; x < cols; x += 1) {
+          const px = x * tile;
+          const py = y * tile;
+          ctx.fillStyle = grid[y][x] === "#" ? wall : path;
+          ctx.fillRect(px, py, tile, tile);
+
+          if (grid[y][x] === "#") {
+            ctx.fillStyle = "rgba(71, 200, 255, 0.28)";
+            ctx.fillRect(px + 3, py + 3, tile - 6, 2);
+            ctx.fillStyle = "rgba(13, 18, 48, 0.42)";
+            ctx.fillRect(px + 3, py + tile - 5, tile - 6, 2);
+          } else {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.025)";
+            ctx.fillRect(px, py, tile, 1);
+            ctx.fillRect(px, py, 1, tile);
+          }
+
+          if (grid[y][x] === ".") {
+            ctx.fillStyle = "#fff3a6";
+            ctx.beginPath();
+            ctx.arc(px + tile / 2, py + tile / 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "rgba(255, 228, 92, 0.28)";
+            ctx.beginPath();
+            ctx.arc(px + tile / 2, py + tile / 2, 7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          if (grid[y][x] === "C") {
+            ctx.fillStyle = "rgba(255, 79, 139, 0.2)";
+            ctx.beginPath();
+            ctx.arc(px + tile / 2, py + tile / 2, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#ff4f8b";
+            ctx.beginPath();
+            ctx.arc(px + tile / 2, py + tile / 2, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#ff9dbb";
+            ctx.beginPath();
+            ctx.arc(px + tile / 2 - 3, py + tile / 2 - 3, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#3ff0b5";
+            ctx.fillRect(px + 16, py + 6, 3, 9);
+          }
+        }
+      }
+
+      drawGhosts(now);
+      drawPlayer(now);
+      drawFloatingTexts(now);
+
+      if (now < cherryUntil) {
+        const settings = currentDifficulty();
+        const seconds = Math.max(0, Math.ceil((cherryUntil - now) / 1000));
+        const barWidth = 184;
+        const fillWidth = Math.min(barWidth, ((cherryUntil - now) / settings.cherryMs) * barWidth);
+        ctx.fillStyle = "rgba(255, 91, 124, 0.92)";
+        ctx.fillRect(12, canvas.height - 42, Math.max(0, fillWidth), 10);
+        ctx.fillStyle = "#f5f7fb";
+        ctx.font = "700 16px system-ui";
+        ctx.fillText(`Cherry power: ${seconds}s`, 12, canvas.height - 52);
+      }
+
+      if (gameState === "playing") {
+        const elapsed = Math.max(0, now - runStartedAt);
+        const ramp = rampProgress(now);
+        const label = elapsed < beginnerGraceMs
+          ? `Warm-up: ${Math.ceil((beginnerGraceMs - elapsed) / 1000)}s`
+          : `Danger ramp: ${Math.round(ramp * 100)}%`;
+        ctx.fillStyle = "rgba(10, 13, 19, 0.72)";
+        ctx.fillRect(canvas.width - 188, 12, 176, 28);
+        ctx.fillStyle = "#f5f7fb";
+        ctx.font = "800 15px system-ui";
+        ctx.textAlign = "right";
+        ctx.fillText(label, canvas.width - 22, 31);
+        ctx.textAlign = "left";
+      }
+    }
+
+    function drawFloatingTexts(now) {
+      floatingTexts = floatingTexts.filter((item) => now - item.born < item.lifetime);
+      floatingTexts.forEach((item) => {
+        const age = now - item.born;
+        const progress = age / item.lifetime;
+        ctx.save();
+        ctx.globalAlpha = 1 - progress;
+        ctx.fillStyle = item.color;
+        ctx.strokeStyle = "rgba(10, 13, 19, 0.86)";
+        ctx.lineWidth = 4;
+        ctx.font = "900 18px system-ui";
+        ctx.textAlign = "center";
+        ctx.strokeText(item.text, item.x, item.y - progress * 32);
+        ctx.fillText(item.text, item.x, item.y - progress * 32);
+        ctx.restore();
+      });
+    }
+
+    function drawPlayer(now) {
+      const cx = player.x * tile + tile / 2;
+      const cy = player.y * tile + tile / 2;
+      const mouth = Math.sin(now / 90) * 0.18 + 0.28;
+      const angle = getAngle(player.dir);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.shadowColor = "rgba(255, 228, 92, 0.55)";
+      ctx.shadowBlur = 14;
+
+      if (gameState === "dying") {
+        const progress = Math.min(1, (now - deathStartedAt) / deathDuration);
+        const open = 0.2 + progress * 2.85;
+        const radius = 12 * (1 - Math.max(0, progress - 0.72) / 0.28);
+        ctx.globalAlpha = 1 - Math.max(0, progress - 0.78) / 0.22;
+        ctx.fillStyle = "#ffe45c";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, Math.max(0, radius), open, Math.PI * 2 - open);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      ctx.fillStyle = now < hitCooldownUntil && Math.floor(now / 120) % 2 ? "#fff7b8" : "#ffe45c";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, 12, mouth, Math.PI * 2 - mouth);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#2a1900";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "#2a1900";
+      ctx.beginPath();
+      ctx.arc(3, -6, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function getAngle(dir) {
+      if (sameDir(dir, { x: -1, y: 0 })) return Math.PI;
+      if (sameDir(dir, { x: 0, y: -1 })) return -Math.PI / 2;
+      if (sameDir(dir, { x: 0, y: 1 })) return Math.PI / 2;
+      return 0;
+    }
+
+    function drawGhosts(now) {
+      ghosts.forEach((ghost) => {
+        const cx = ghost.x * tile + tile / 2;
+        const cy = ghost.y * tile + tile / 2;
+        const powered = now < cherryUntil;
+
+        ctx.save();
+        ctx.shadowColor = powered ? "rgba(63, 240, 181, 0.55)" : `${ghost.color}88`;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = powered ? "#55e6a5" : ghost.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 2, 12, Math.PI, 0);
+        ctx.lineTo(cx + 12, cy + 13);
+        ctx.lineTo(cx + 6, cy + 9);
+        ctx.lineTo(cx, cy + 13);
+        ctx.lineTo(cx - 6, cy + 9);
+        ctx.lineTo(cx - 12, cy + 13);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#0a0d13";
+        ctx.beginPath();
+        ctx.arc(cx - 5, cy - 3, 2.8, 0, Math.PI * 2);
+        ctx.arc(cx + 5, cy - 3, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function loop(now) {
+      const elapsed = now - lastFrame;
+      lastFrame = now;
+
+      if (gameState === "playing" && elapsed >= 0) {
+        updateCherrySpawns(now);
+        movePlayer(now);
+        moveGhosts(now);
+        handleCollisions(now);
+        updateHud();
+      } else if (gameState === "dying") {
+        finishDeath(now);
+        updateHud();
+      }
+
+      drawBoard(now);
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+      const wasdDirections = {
+        w: { x: 0, y: -1 },
+        a: { x: -1, y: 0 },
+        s: { x: 0, y: 1 },
+        d: { x: 1, y: 0 }
+      };
+      const arrowDirections = {
+        arrowup: { x: 0, y: -1 },
+        arrowleft: { x: -1, y: 0 },
+        arrowdown: { x: 0, y: 1 },
+        arrowright: { x: 1, y: 0 }
+      };
+      const next = controlMode === "arrows" ? arrowDirections[key] : wasdDirections[key];
+
+      if (next) {
+        event.preventDefault();
+        wantedDir = next;
+        if (gameState === "ready") {
+          beginRun();
+        }
+      }
+    });
+
+    restartButton.addEventListener("click", () => {
+      unlockAudio();
+      resetGame(true);
+    });
+    messageButton.addEventListener("click", () => {
+      unlockAudio();
+      resetGame(true);
+    });
+    fullscreenButton.addEventListener("click", toggleFullscreen);
+    document.addEventListener("fullscreenchange", updateFullscreenButton);
+    wasdModeButton.addEventListener("click", () => setControlMode("wasd"));
+    arrowModeButton.addEventListener("click", () => setControlMode("arrows"));
+    difficultySlider.addEventListener("input", (event) => setDifficulty(event.target.value));
+    difficultyNumber.addEventListener("change", (event) => setDifficulty(event.target.value));
+    difficultyDown.addEventListener("click", () => setDifficulty(difficultyLevel - 1));
+    difficultyUp.addEventListener("click", () => setDifficulty(difficultyLevel + 1));
+
+    updateDifficultyControls();
+    resetGame(false);
+    requestAnimationFrame(loop);
+  
+=== HTML DOCUMENT END ===
+
+</body>
+</html>

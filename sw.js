@@ -1,4 +1,4 @@
-const VERSION='recess-v44';
+const VERSION='recess-v46';
 const PRECACHE=[
   ['/', '/index.html'],
   ['/styles.css', '/styles.css'],
@@ -10,6 +10,8 @@ const PRECACHE=[
   ['/shop.js', '/shop.js'],
   ['/game', '/game.html'],
   ['/games.js', '/games.js'],
+  ['/parkour', '/parkour.html'],
+  ['/parkour.js', '/parkour.js'],
   ['/voxel', '/voxel.html'],
   ['/voxel.js', '/voxel.js'],
   ['/football', '/football.html'],
@@ -23,6 +25,7 @@ const PRECACHE=[
 const ROUTES={
   '/':'/', '/index.html':'/',
   '/game':'/game', '/game.html':'/game',
+  '/parkour':'/parkour', '/parkour.html':'/parkour',
   '/voxel':'/voxel', '/voxel.html':'/voxel',
   '/football':'/football', '/football.html':'/football',
   '/classics':'/classics', '/classics.html':'/classics',

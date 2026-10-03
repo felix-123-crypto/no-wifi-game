@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Parkour 1000 is an offline precision platformer with 1000 increasingly difficult levels.">
+  <title>Parkour 1000 — Recess Arcade</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="parkour-page">
+  <header class="topbar">
+    <a class="brand" href="index.html"><img class="brand-logo" width="34" height="34" src="logo-arcade.png" alt=""> RECESS ARCADE</a>
+    <div class="top-actions"><div class="status"><i></i> OFFLINE READY</div></div>
+  </header>
+
+  <main class="parkour-shell">
+    <a class="back" href="index.html#catalog">← BACK TO GAME SHELF</a>
+    <div class="game-header parkour-heading">
+      <div>
+        <p class="eyebrow">PRECISION PLATFORMER · 1000 LEVELS</p>
+        <h1>Parkour 1000</h1>
+        <p>Run, jump, and stick the landing. Every level gets meaner.</p>
+      </div>
+      <div class="scoreboard" aria-label="Parkour stats">
+        <div class="scorebox"><small>LEVEL</small><strong id="level-stat">001</strong></div>
+        <div class="scorebox"><small>BEST</small><strong id="best-stat">001</strong></div>
+        <div class="scorebox"><small>DEATHS</small><strong id="death-stat">0</strong></div>
+        <div class="scorebox"><small>TIME</small><strong id="time-stat">0:00</strong></div>
+      </div>
+    </div>
+
+    <section class="parkour-console" aria-label="Parkour game">
+      <div class="parkour-console-bar">
+        <span id="stage-label">WARM UP</span>
+        <span id="level-label">LEVEL 001 / 1000</span>
+      </div>
+      <div class="parkour-canvas-wrap">
+        <canvas id="parkour-game" width="960" height="540" aria-label="Parkour 1000 playable game area"></canvas>
+        <div class="parkour-overlay" id="parkour-overlay">
+          <div class="parkour-overlay-card">
+            <p class="eyebrow" id="overlay-kicker">LEVEL 001</p>
+            <h2 id="overlay-title">READY TO RUN?</h2>
+            <p id="overlay-copy">Reach the flag without touching the hazards. Your progress saves in this browser.</p>
+            <div class="parkour-meter" aria-label="Level progress"><span id="meter-fill"></span></div>
+            <p class="meter-copy"><span id="meter-level">1</span> of 1000 levels unlocked</p>
+            <div class="parkour-overlay-actions">
+              <button id="parkour-start" type="button">START LEVEL</button>
+              <button id="parkour-skip" class="parkour-secondary-button" type="button">SKIP LEVEL →</button>
+            </div>
+            <div class="parkour-level-tools">
+              <label for="parkour-jump-level">JUMP TO LEVEL</label>
+              <input id="parkour-jump-level" type="number" min="1" max="1000" value="1" inputmode="numeric">
+              <button id="parkour-go-level" type="button">GO</button>
+            </div>
+            <p class="parkour-key-hint">Press R to retry or N to skip when the overlay is open.</p>
+          </div>
+        </div>
+      </div>
+      <div class="parkour-controls" aria-label="Controls">
+        <span><b>A / D</b> or <b>← / →</b> move</span>
+        <span><b>SPACE</b>, <b>W</b>, or <b>↑</b> jump</span>
+        <span><b>S</b>, <b>↓</b> fast fall</span>
+        <span><b>R</b> restart</span>
+      </div>
+    </section>
+
+    <div class="parkour-notes">
+      <article class="instruction-card">
+        <p class="eyebrow">HOW IT WORKS</p>
+        <h3>ONE RUN. ONE FLAG.</h3>
+        <p>Land on the green platforms, avoid red hazards, and touch the finish flag. Later levels add tighter jumps, moving platforms, and faster momentum.</p>
+      </article>
+      <article class="instruction-card">
+        <p class="eyebrow">YOUR PROGRESS</p>
+        <h3>LEVELS 1 → 1000</h3>
+        <p>Beat a level to unlock the next one. Your highest level and death count stay on this device, even when the Wi-Fi disappears.</p>
+      </article>
+    </div>
+  </main>
+
+  <script src="economy.js"></script>
+  <script src="parkour.js"></script>
+</body>
+</html>

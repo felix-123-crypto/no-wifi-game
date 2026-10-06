@@ -17,7 +17,7 @@
   const save = (key, value) => { try { localStorage.setItem(key, value); } catch {} };
   let playerId = get(idKey);
   if (!playerId) { playerId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`; save(idKey, playerId); }
-  let pending = 0, timer, refreshTimer = 0, autoScrollNext = true;
+  let pending = Number(get(bestKey) || 0), timer, refreshTimer = 0, autoScrollNext = true, uploadInFlight = false;
   const root = document.createElement('div');
   root.innerHTML = `<button class="leaderboard-launch" type="button">LEADERBOARD</button>
     <div class="leaderboard-backdrop" hidden><section class="leaderboard-dialog" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
@@ -61,7 +61,10 @@
     const best = old && Number(old.score) > score ? old : {score, nickname};
     save(pendingKey, JSON.stringify(best));
   }
-  function flushPending() { const queued = readPending(); if (queued && navigator.onLine) submit(Number(queued.score), queued.nickname); }
+  function flushPending() {
+    const queued = readPending();
+    if (queued && navigator.onLine && !uploadInFlight) submit(Number(queued.score), queued.nickname);
+  }
   async function submit(score, nicknameOverride) {
     score = Math.floor(Number(score) || 0); if (score <= 0) return;
     pending = Math.max(pending, score); save(bestKey, String(Math.max(Number(get(bestKey) || 0), score)));
@@ -69,10 +72,28 @@
     save(nicknameKey, nickname);
     savePending(score, nickname);
     if (!navigator.onLine) { if (!backdrop.hidden) status.textContent = 'Saved on this device. It will upload when Wi‑Fi returns.'; return; }
-    try { const r = await fetch('/api/leaderboard', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({game, player_id:playerId, nickname, score})}); if (!r.ok) throw new Error(); const queued = readPending(); if (queued && Number(queued.score) <= score) { try { localStorage.removeItem(pendingKey); } catch {} } if (!backdrop.hidden) load(); }
-    catch { if (!backdrop.hidden) status.textContent = 'Saved locally. Public board will retry when available.'; }
+    if (uploadInFlight) return;
+    uploadInFlight = true;
+    try {
+      const r = await fetch('/api/leaderboard', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({game, player_id:playerId, nickname, score})});
+      if (!r.ok) throw new Error();
+      const queued = readPending();
+      if (queued && Number(queued.score) === score && queued.nickname === nickname) { try { localStorage.removeItem(pendingKey); } catch {} }
+      if (!backdrop.hidden) load();
+    }
+    catch { if (!backdrop.hidden) status.textContent = 'Saved on this device. Public board will retry when connected.'; }
+    finally {
+      uploadInFlight = false;
+      const queued = readPending();
+      if (queued && navigator.onLine && (Number(queued.score) !== score || queued.nickname !== nickname)) setTimeout(flushPending, 250);
+    }
   }
   window.addEventListener('online', flushPending);
+  window.addEventListener('pageshow', flushPending);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushPending(); });
+  // `online` can be optimistic on captive portals or flaky Wi-Fi. Keep retrying
+  // the locally queued best score so it syncs as soon as the API is reachable.
+  setInterval(flushPending, 15000);
   flushPending();
   function cleanNickname(value) { return String(value || 'PLAYER').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0,16) || 'PLAYER'; }
   form.addEventListener('submit', e => { e.preventDefault(); save(nicknameKey, cleanNickname(input.value)); if (pending || get(bestKey)) submit(Math.max(pending, Number(get(bestKey) || 0))); else { status.textContent = 'Finish a game to submit a score.'; load(); } });

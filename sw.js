@@ -1,4 +1,4 @@
-const VERSION='recess-v50';
+const VERSION='recess-v51';
 const PRECACHE=[
   ['/', '/index.html'],
   ['/styles.css', '/styles.css'],
@@ -94,7 +94,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
   event.respondWith((async()=>{
-    const cached=await caches.match(event.request);
+    const cached=await caches.match(event.request,{ignoreSearch:true});
     if(cached)return cached;
     try{
       const response=await fetch(event.request);

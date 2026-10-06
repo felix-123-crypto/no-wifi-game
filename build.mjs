@@ -21,8 +21,8 @@ for (const file of files) {
 }
 const gameHtmlPath = join(client, 'game.html');
 const gameHtml = await readFile(gameHtmlPath, 'utf8');
-const currentGameHtml = gameHtml.replace('src="games.js"', 'src="games.js?v=79"');
-if (!currentGameHtml.includes('src="leaderboard.js"')) await writeFile(gameHtmlPath, currentGameHtml.replace('</body>', '<script src="leaderboard.js?v=79"></script></body>'));
+const currentGameHtml = gameHtml.replace('src="games.js"', 'src="games.js?v=80"');
+if (!currentGameHtml.includes('src="leaderboard.js"')) await writeFile(gameHtmlPath, currentGameHtml.replace('</body>', '<script src="leaderboard.js?v=80"></script></body>'));
 await cp(join(root, 'worker.js'), join(dist, 'server', 'index.js'));
 if (existsSync(join(root, '.openai', 'hosting.json'))) {
   await cp(join(root, '.openai', 'hosting.json'), join(dist, '.openai', 'hosting.json'));
@@ -41,7 +41,11 @@ if (existsSync(join(root, 'drizzle'))) {
   await copyFiles(join(root, 'drizzle'), join(dist, '.openai', 'drizzle'));
 }
 for (const file of files.filter(file => file.endsWith('.html'))) {
-  const html = await readFile(join(client, file), 'utf8');
+  const htmlPath = join(client, file);
+  let html = await readFile(htmlPath, 'utf8');
   if (!html.includes('<!doctype html>')) throw new Error(`${file} is not a complete HTML document`);
+  html = html.replace(/href="styles\.css(?:\?v=[^"]*)?"/g, 'href="styles.css?v=80"');
+  html = html.replace(/src="leaderboard\.js(?:\?v=[^"]*)?"/g, 'src="leaderboard.js?v=80"');
+  await writeFile(htmlPath, html);
 }
 console.log(`Built ${files.length} offline-ready assets.`);

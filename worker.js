@@ -15,7 +15,7 @@ const validGame = game => GAMES.has(String(game || '').toLowerCase());
 
 async function leaderboard(request, env, url) {
   if (request.method === 'OPTIONS') return new Response(null, {status:204, headers});
-  if (!env.DB) return json({error:'Leaderboard temporarily unavailable.'},503);
+  if (!env.DB) return json({error:'Leaderboard database binding is unavailable.'},503);
   const game = String(url.searchParams.get('game') || '').toLowerCase();
   if (!validGame(game)) return json({error:'Unknown game.'},400);
   try {
@@ -38,7 +38,7 @@ async function leaderboard(request, env, url) {
       score=CASE WHEN excluded.score > leaderboard.score THEN excluded.score ELSE leaderboard.score END,
       updated_at=CASE WHEN excluded.score > leaderboard.score THEN CURRENT_TIMESTAMP ELSE leaderboard.updated_at END`).bind(game, playerId, nickname, score).run();
     return json({ok:true});
-  } catch (error) { console.error('leaderboard', error); return json({error:'Leaderboard temporarily unavailable.'},503); }
+  } catch (error) { console.error('leaderboard', error); return json({error:'Leaderboard database query failed.'},503); }
 }
 
 export default { async fetch(request, env) {

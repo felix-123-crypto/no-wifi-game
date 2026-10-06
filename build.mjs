@@ -21,7 +21,8 @@ for (const file of files) {
 }
 const gameHtmlPath = join(client, 'game.html');
 const gameHtml = await readFile(gameHtmlPath, 'utf8');
-if (!gameHtml.includes('src="leaderboard.js"')) await writeFile(gameHtmlPath, gameHtml.replace('</body>', '<script src="leaderboard.js"></script></body>'));
+const currentGameHtml = gameHtml.replace('src="games.js"', 'src="games.js?v=76"');
+if (!currentGameHtml.includes('src="leaderboard.js"')) await writeFile(gameHtmlPath, currentGameHtml.replace('</body>', '<script src="leaderboard.js?v=76"></script></body>'));
 await cp(join(root, 'worker.js'), join(dist, 'server', 'index.js'));
 if (existsSync(join(root, '.openai', 'hosting.json'))) {
   await cp(join(root, '.openai', 'hosting.json'), join(dist, '.openai', 'hosting.json'));

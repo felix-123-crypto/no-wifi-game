@@ -28,6 +28,10 @@ if (existsSync(join(root, '.openai', 'hosting.json'))) {
 } else {
   await writeFile(join(dist, '.openai', 'hosting.json'), '{}\n');
 }
+if (existsSync(join(root, 'drizzle'))) {
+  await mkdir(join(dist, '.openai', 'drizzle'), { recursive: true });
+  await cp(join(root, 'drizzle'), join(dist, '.openai', 'drizzle'), { recursive: true });
+}
 for (const file of files.filter(file => file.endsWith('.html'))) {
   const html = await readFile(join(client, file), 'utf8');
   if (!html.includes('<!doctype html>')) throw new Error(`${file} is not a complete HTML document`);

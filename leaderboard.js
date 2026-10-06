@@ -5,17 +5,19 @@
   let game = null;
   if (location.pathname.includes('classics')) game = params.get('game') || '2048';
   else if (location.pathname.includes('football')) game = 'football';
+  else if (location.pathname.includes('parkour')) game = 'parkour';
   else if (location.pathname.includes('voxel')) game = 'voxel';
   else if (location.pathname.includes('/game')) game = params.get('game') || 'pacman';
   if (!game) return;
   const nicknameKey = 'recess-leaderboard-nickname';
   const idKey = 'recess-leaderboard-player-id';
   const bestKey = `recess-leaderboard-best-${game}`;
+  const pendingKey = `recess-leaderboard-pending-${game}`;
   const get = key => { try { return localStorage.getItem(key) || ''; } catch { return ''; } };
   const save = (key, value) => { try { localStorage.setItem(key, value); } catch {} };
   let playerId = get(idKey);
   if (!playerId) { playerId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`; save(idKey, playerId); }
-  let pending = 0, timer;
+  let pending = 0, timer, refreshTimer = 0, autoScrollNext = true;
   const root = document.createElement('div');
   root.innerHTML = `<button class="leaderboard-launch" type="button">LEADERBOARD</button>
     <div class="leaderboard-backdrop" hidden><section class="leaderboard-dialog" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
@@ -27,8 +29,8 @@
   document.body.append(root);
   const backdrop = root.querySelector('.leaderboard-backdrop'), list = root.querySelector('.leaderboard-list'), rankEl = root.querySelector('.leaderboard-rank'), status = root.querySelector('.leaderboard-status'), form = root.querySelector('.leaderboard-form'), input = form.elements.nickname, scroll = root.querySelector('.leaderboard-scroll');
   input.value = get(nicknameKey);
-  const open = () => { backdrop.hidden = false; input.value = get(nicknameKey); load(); setTimeout(() => input.focus(), 0); };
-  const close = () => { backdrop.hidden = true; };
+  const open = () => { backdrop.hidden = false; input.value = get(nicknameKey); autoScrollNext = true; flushPending(); load(); clearInterval(refreshTimer); refreshTimer = setInterval(() => { if (!backdrop.hidden) { flushPending(); load(); } }, 5000); setTimeout(() => input.focus(), 0); };
+  const close = () => { backdrop.hidden = true; clearInterval(refreshTimer); refreshTimer = 0; };
   root.querySelector('.leaderboard-launch').addEventListener('click', open);
   root.querySelector('.leaderboard-close').addEventListener('click', close);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
@@ -36,28 +38,42 @@
   const row = (item, index, own) => `<li class="leaderboard-row${own ? ' leaderboard-me' : ''}" data-player="${own ? 'me' : ''}"><span>${index + 1}</span><strong>${escapeHtml(item.nickname)}</strong><b>${Number(item.score || 0).toLocaleString()}</b></li>`;
   function escapeHtml(value) { return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
   function render(data) {
+    const previousScroll = scroll.scrollTop;
     const rows = Array.isArray(data?.rows) ? data.rows.slice() : [];
-    const own = data?.own || (pending ? {nickname: get(nicknameKey) || 'YOU', score: Math.max(Number(get(bestKey) || 0), pending)} : null);
+    const localBest = Math.max(Number(get(bestKey) || 0), pending);
+    const own = data?.own || (localBest > 0 ? {nickname: get(nicknameKey) || 'YOU', score: localBest} : null);
     if (own && !rows.some(r => r.nickname === own.nickname && Number(r.score) === Number(own.score))) rows.push(own);
     rows.sort((a,b) => Number(b.score) - Number(a.score));
     list.innerHTML = rows.length ? rows.map((r,i) => row(r, i, own && r.nickname === own.nickname && Number(r.score) === Number(own.score))).join('') : '<li class="leaderboard-empty">No scores yet. Be the first!</li>';
     rankEl.textContent = data?.rank ? `YOUR RANK #${data.rank} · BEST ${Number(own?.score || 0).toLocaleString()}` : own ? `YOUR BEST ${Number(own.score || 0).toLocaleString()}` : 'Play a game, then submit your score.';
     const me = list.querySelector('[data-player="me"]');
-    if (me) { scroll.scrollTop = 0; setTimeout(() => scroll.scrollTo({top: Math.max(0, me.offsetTop - 20), behavior: 'smooth'}), 120); }
+    if (me && autoScrollNext) { scroll.scrollTop = 0; autoScrollNext = false; setTimeout(() => { if (!backdrop.hidden) scroll.scrollTo({top: Math.max(0, me.offsetTop - 20), behavior: 'smooth'}); }, 120); }
+    else if (!autoScrollNext) scroll.scrollTop = previousScroll;
   }
   async function load() {
     status.textContent = 'Loading public scores…';
     try { const r = await fetch(`/api/leaderboard?game=${encodeURIComponent(game)}&player_id=${encodeURIComponent(playerId)}`); if (!r.ok) throw new Error(); render(await r.json()); status.textContent = ''; }
     catch { render(null); status.textContent = 'Public board unavailable right now. Your best score is still saved on this device.'; }
   }
-  async function submit(score) {
+  function readPending() { try { return JSON.parse(get(pendingKey) || 'null'); } catch { return null; } }
+  function savePending(score, nickname) {
+    const old = readPending();
+    const best = old && Number(old.score) > score ? old : {score, nickname};
+    save(pendingKey, JSON.stringify(best));
+  }
+  function flushPending() { const queued = readPending(); if (queued && navigator.onLine) submit(Number(queued.score), queued.nickname); }
+  async function submit(score, nicknameOverride) {
     score = Math.floor(Number(score) || 0); if (score <= 0) return;
     pending = Math.max(pending, score); save(bestKey, String(Math.max(Number(get(bestKey) || 0), score)));
-    const nickname = cleanNickname(get(nicknameKey) || input.value || 'PLAYER');
+    const nickname = cleanNickname(nicknameOverride || get(nicknameKey) || input.value || 'PLAYER');
     save(nicknameKey, nickname);
-    try { const r = await fetch('/api/leaderboard', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({game, player_id:playerId, nickname, score})}); if (!r.ok) throw new Error(); if (!backdrop.hidden) load(); }
+    savePending(score, nickname);
+    if (!navigator.onLine) { if (!backdrop.hidden) status.textContent = 'Saved on this device. It will upload when Wi‑Fi returns.'; return; }
+    try { const r = await fetch('/api/leaderboard', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({game, player_id:playerId, nickname, score})}); if (!r.ok) throw new Error(); const queued = readPending(); if (queued && Number(queued.score) <= score) { try { localStorage.removeItem(pendingKey); } catch {} } if (!backdrop.hidden) load(); }
     catch { if (!backdrop.hidden) status.textContent = 'Saved locally. Public board will retry when available.'; }
   }
+  window.addEventListener('online', flushPending);
+  flushPending();
   function cleanNickname(value) { return String(value || 'PLAYER').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0,16) || 'PLAYER'; }
   form.addEventListener('submit', e => { e.preventDefault(); save(nicknameKey, cleanNickname(input.value)); if (pending || get(bestKey)) submit(Math.max(pending, Number(get(bestKey) || 0))); else { status.textContent = 'Finish a game to submit a score.'; load(); } });
   window.RecessLeaderboard = { gameId: game, queueScore(score) { if (Number(score) > pending) { pending = Number(score); clearTimeout(timer); timer = setTimeout(() => submit(pending), 1600); } }, submit, open };

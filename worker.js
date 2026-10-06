@@ -7,7 +7,7 @@ const SITEMAP_XML = `<?xml version="1.0" encoding="UTF-8"?>
   <url><loc>https://nowifi-game.com/classics</loc><priority>0.7</priority></url>
 </urlset>`;
 const ROBOTS_TXT = `User-agent: *\nAllow: /\n\nSitemap: https://nowifi-game.com/sitemap.xml\n`;
-const GAMES = new Set(['pacman','dino','gd','football','voxel','2048','tetris','snake','blocks']);
+const GAMES = new Set(['pacman','dino','gd','football','voxel','parkour','2048','tetris','snake','blocks']);
 const headers = {'content-type':'application/json; charset=UTF-8','cache-control':'no-store','access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'content-type'};
 const json = (data, status=200) => new Response(JSON.stringify(data), {status, headers});
 const cleanName = value => String(value || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0,16);

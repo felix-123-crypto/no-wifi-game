@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -21,8 +21,8 @@ for (const file of files) {
 }
 const gameHtmlPath = join(client, 'game.html');
 const gameHtml = await readFile(gameHtmlPath, 'utf8');
-const currentGameHtml = gameHtml.replace('src="games.js"', 'src="games.js?v=76"');
-if (!currentGameHtml.includes('src="leaderboard.js"')) await writeFile(gameHtmlPath, currentGameHtml.replace('</body>', '<script src="leaderboard.js?v=76"></script></body>'));
+const currentGameHtml = gameHtml.replace('src="games.js"', 'src="games.js?v=79"');
+if (!currentGameHtml.includes('src="leaderboard.js"')) await writeFile(gameHtmlPath, currentGameHtml.replace('</body>', '<script src="leaderboard.js?v=79"></script></body>'));
 await cp(join(root, 'worker.js'), join(dist, 'server', 'index.js'));
 if (existsSync(join(root, '.openai', 'hosting.json'))) {
   await cp(join(root, '.openai', 'hosting.json'), join(dist, '.openai', 'hosting.json'));
@@ -30,8 +30,15 @@ if (existsSync(join(root, '.openai', 'hosting.json'))) {
   await writeFile(join(dist, '.openai', 'hosting.json'), '{}\n');
 }
 if (existsSync(join(root, 'drizzle'))) {
-  await mkdir(join(dist, '.openai', 'drizzle'), { recursive: true });
-  await cp(join(root, 'drizzle'), join(dist, '.openai', 'drizzle'), { recursive: true });
+  const copyFiles = async (sourceDir, targetDir) => {
+    await mkdir(targetDir, { recursive: true });
+    for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
+      const source = join(sourceDir, entry.name), target = join(targetDir, entry.name);
+      if (entry.isDirectory()) await copyFiles(source, target);
+      else if (entry.isFile()) await cp(source, target);
+    }
+  };
+  await copyFiles(join(root, 'drizzle'), join(dist, '.openai', 'drizzle'));
 }
 for (const file of files.filter(file => file.endsWith('.html'))) {
   const html = await readFile(join(client, file), 'utf8');

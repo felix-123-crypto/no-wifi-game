@@ -56,6 +56,8 @@ body:not(.retro-theme).voxel-body .topbar{background:rgba(5,8,6,.96)!important}b
   .touch-controls button{min-width:52px;min-height:48px;border-radius:10px;touch-action:manipulation}
   .touch-controls.jump-only button:not([data-key="Space"]){display:none}
   .touch-controls.jump-only button[data-key="Space"]{min-width:120px;font-size:11px;letter-spacing:.08em}
+  .touch-controls.dino-controls button:not([data-key="ArrowDown"]):not([data-key="Space"]){display:none}
+  .touch-controls.dino-controls button[data-key="ArrowDown"]{min-width:70px;font-size:11px}
 }
 
 /* Parkour 1000 */

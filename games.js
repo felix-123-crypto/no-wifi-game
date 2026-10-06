@@ -5,6 +5,7 @@ let gdLevel='stereo',practiceMode=false;const gdConfigs={stereo:{label:'STEREO M
 const pacmanOptions=document.querySelector('#pacman-options');let pacmanDifficulty=1;const pacmanScoreMultiplier=level=>Math.min(4,1+Math.floor((level-1)/25));if(game==='pacman'&&pacmanOptions){pacmanOptions.hidden=false;const slider=document.querySelector('#pacman-difficulty');const label=document.querySelector('#pacman-difficulty-label');const update=()=>{pacmanDifficulty=Math.max(1,Math.min(100,Number(slider.value)||1));label.textContent=`${pacmanDifficulty===1?'EXTRA EASY':`LEVEL ${pacmanDifficulty}`} · ${pacmanScoreMultiplier(pacmanDifficulty)}× SCORE`;};slider.addEventListener('input',update);update();document.body.classList.add('pacman-page');}
 const meta={pacman:['Maze Muncher','ARCADE CLASSIC','Clear the maze. Dodge the ghosts. Chase a new high score.','Use arrow keys or WASD. Collect dots, grab cherries, and clear every corridor before you lose your lives.'],blocks:['Block Quest','CREATIVE MODE','Dig deep, gather gems, and build your way to the sky.','Move with arrows or WASD. Click blocks to mine them, then press Space to place a block nearby.'],football:['Pocket Football','SPORTS CHALLENGE','Aim your shot. Beat the keeper. Find the top corner.','Move the target with arrows or WASD, then press Space or tap the game to shoot.'],dino:['Chrome Dino','ARCADE RUNNER','Jump the cacti and survive as the desert gets faster.','Press Space, ArrowUp, or W to jump. The longer you survive, the faster it gets.'],gd:['Cube Rush','GEOMETRY RUNNER','Choose a premade level, chase 100%, or practice from checkpoints.','Pick Stereo Madness, Back on Track, Polargeist, or Wave Run. Hold Space, ArrowUp, or W to control your jump or wave.']};
 [titleEl.textContent,kickEl.textContent,subEl.textContent,howEl.textContent]=meta[game]||meta.pacman;document.title=`${titleEl.textContent} — Recess Arcade`;
+if(game==='dino'){howEl.textContent='Jump over cacti with Space, ↑, or W. Hold ↓ or S to duck under flying birds.';document.querySelector('#overlay-copy').textContent='Jump over cacti. Hold ↓ or S to duck under flying birds.';}
 function blockWorldStorage(){try{return JSON.parse(localStorage.getItem('recess-block-worlds')||'[]')}catch(error){return []}}
 function saveBlockWorlds(worlds){try{localStorage.setItem('recess-block-worlds',JSON.stringify(worlds))}catch(error){/* offline storage may be restricted */}}
 function renderBlockWorlds(){const list=document.querySelector('#block-world-list'),enter=document.querySelector('#start-block-world'),deleteButton=document.querySelector('#delete-block-world');if(!list)return;const worlds=blockWorldStorage();list.innerHTML='';if(!worlds.length){list.innerHTML='<div class="block-world-empty">No saved worlds yet. Create one below.</div>'}worlds.forEach(world=>{const card=document.createElement('button');card.type='button';card.className='block-world-card'+(activeBlockWorld&&activeBlockWorld.id===world.id?' selected':'');card.innerHTML=`<strong>${world.name}</strong><span>${world.mod.toUpperCase()} · ${world.score||0} XP</span>`;card.addEventListener('click',()=>selectBlockWorld(world.id));list.appendChild(card)});if(enter)enter.disabled=!activeBlockWorld;if(deleteButton)deleteButton.disabled=!activeBlockWorld}
@@ -14,8 +15,9 @@ if(game==='blocks')setupBlockWorldHome();
 const touchPad=document.querySelector('#touch');
 if(touchPad){
   const touchButtons=[...touchPad.querySelectorAll('button')];
-  const jumpOnly=['dino','gd'].includes(game);
+  const jumpOnly=game==='gd';
   touchPad.classList.toggle('jump-only',jumpOnly);
+  touchPad.classList.toggle('dino-controls',game==='dino');
   if(jumpOnly){const jumpButton=touchPad.querySelector('[data-key="Space"]');if(jumpButton){jumpButton.textContent='JUMP';jumpButton.setAttribute('aria-label','Hold to jump');}}
   if(game==='blocks'){const placeButton=touchPad.querySelector('[data-key="Space"]');if(placeButton){placeButton.textContent='PLACE';placeButton.setAttribute('aria-label','Place block');}}
   touchButtons.forEach(button=>{button.addEventListener('pointercancel',()=>{keys[button.dataset.key]=false;});});
@@ -239,7 +241,7 @@ function dinoHitboxMode(){
     p.vy+=1450*dt;p.y+=p.vy*dt;if(p.y>=390){p.y=390;p.vy=0;p.onGround=true}next-=dt;
     if(next<=0){const type=Math.random()<.18?'bird':'cactus';obs.push({x:820,w:type==='bird'?30:18+Math.random()*18,h:type==='bird'?75:24+Math.random()*38,type});next=Math.max(.62,1.25-speed/850)}
     obs.forEach(o=>o.x-=speed*dt);obs=obs.filter(o=>o.x>-70);const duck=keys.ArrowDown||keys.KeyS;
-    for(const o of obs){const hit=p.x+p.w-5>o.x&&p.x+5<o.x+o.w;if(hit&&(o.type==='bird'?!duck&&p.y+20>432-o.h:p.y+p.h>432-o.h+3)){window.RecessPoints?.award?.(Math.floor(score/10),'Dino survival');end(`You survived ${score} meters.`);return}}
+    for(const o of obs){const playerBox={x:p.x,y:p.y+(duck?12:0),w:p.w+(duck?13:0),h:duck?30:p.h};let hit;if(o.type==='bird'){const birdY=432-o.h;const birdBoxes=[{x:o.x,y:birdY,w:o.w,h:8},{x:o.x+8,y:birdY-8,w:8,h:8},{x:o.x+o.w-5,y:birdY-8,w:8,h:8}];hit=birdBoxes.some(b=>playerBox.x<b.x+b.w&&playerBox.x+playerBox.w>b.x&&playerBox.y<b.y+b.h&&playerBox.y+playerBox.h>b.y)}else{hit=playerBox.x+playerBox.w-5>o.x&&playerBox.x+5<o.x+o.w&&playerBox.y+playerBox.h>432-o.h+3}if(hit){window.RecessPoints?.award?.(Math.floor(score/10),'Dino survival');end(`You survived ${score} meters.`);return}}
     speed+=dt*6;night+=dt*.16;setScore(score+Math.max(1,Math.floor(dt*10)));draw();raf=requestAnimationFrame(loop)
   }
   raf=requestAnimationFrame(loop)

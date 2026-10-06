@@ -1,4 +1,4 @@
-const VERSION='recess-v47';
+const VERSION='recess-v50';
 const PRECACHE=[
   ['/', '/index.html'],
   ['/styles.css', '/styles.css'],
@@ -12,6 +12,7 @@ const PRECACHE=[
   ['/games.js', '/games.js'],
   ['/parkour', '/parkour.html'],
   ['/parkour.js', '/parkour.js'],
+  ['/leaderboard.js', '/leaderboard.js'],
   ['/voxel', '/voxel.html'],
   ['/voxel.js', '/voxel.js'],
   ['/football', '/football.html'],

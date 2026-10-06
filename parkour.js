@@ -237,11 +237,14 @@ function finishLevel() {
   if (currentLevel < MAX_LEVEL) currentLevel += 1;
   saveProgress();
   updateStats();
-  window.RecessPoints?.award?.(25 + Math.floor(completed / 10), 'Parkour level cleared');
+  const timeBonus = Math.floor(Math.max(0, level.timeLimit - elapsed) * 2);
+  const pointReward = 25 + Math.floor(completed / 10) + timeBonus;
+  window.RecessPoints?.award?.(pointReward, `Parkour level ${completed} · ${formatTime(elapsed)} finish`);
+  window.RecessLeaderboard?.submit?.(pointReward);
   if (completed === MAX_LEVEL) {
-    showOverlay('1000 LEVELS CLEARED', 'You finished the full Parkour 1000 gauntlet. The course has no more flags.', 'PLAY AGAIN', 'FINAL FORM');
+    showOverlay('1000 LEVELS CLEARED', `You finished the full Parkour 1000 gauntlet in ${formatTime(elapsed)}. +${pointReward} points (${timeBonus} speed bonus).`, 'PLAY AGAIN', 'FINAL FORM');
   } else {
-    showOverlay('LEVEL CLEAR', `Flag reached in ${formatTime(elapsed)}. Level ${currentLevel} is unlocked.`, 'NEXT LEVEL', `LEVEL ${String(completed).padStart(3, '0')} CLEAR`);
+    showOverlay('LEVEL CLEAR', `Flag reached in ${formatTime(elapsed)}. +${pointReward} points (${timeBonus} speed bonus). Level ${currentLevel} is unlocked.`, 'NEXT LEVEL', `LEVEL ${String(completed).padStart(3, '0')} CLEAR`);
   }
   draw(performance.now());
 }

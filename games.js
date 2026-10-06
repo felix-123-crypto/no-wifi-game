@@ -1,4 +1,3 @@
-const leaderboardScript=document.createElement('script');leaderboardScript.src='leaderboard.js';document.head.appendChild(leaderboardScript);
 const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best');
 const overlay=document.querySelector('#overlay'),startBtn=document.querySelector('#start'),titleEl=document.querySelector('#game-title'),subEl=document.querySelector('#game-subtitle'),kickEl=document.querySelector('#game-kicker'),howEl=document.querySelector('#how');
 const game=new URLSearchParams(location.search).get('game')||'pacman';let running=false,score=0,raf,keys={};let activeBlockWorld=null;

@@ -253,6 +253,18 @@ function rectsOverlap(a, b, pad = 0) {
   return a.x + a.w - pad > b.x && a.x + pad < b.x + b.w && a.y + a.h - pad > b.y && a.y + pad < b.y + b.h;
 }
 
+function crossesPlatformTop(body, previousBottom, platform) {
+  const footInset = Math.min(7, body.w / 2);
+  const roundedEdge = Math.min(4, platform.h / 2, platform.w / 2);
+  const feetLeft = body.x + footInset;
+  const feetRight = body.x + body.w - footInset;
+  const surfaceLeft = platform.x + roundedEdge;
+  const surfaceRight = platform.x + platform.w - roundedEdge;
+  const feetTouchSurface = feetRight > surfaceLeft && feetLeft < surfaceRight;
+  const crossedTop = previousBottom <= platform.y && body.y + body.h >= platform.y;
+  return feetTouchSurface && crossedTop && body.vy >= 0;
+}
+
 function updateMovingPlatforms(now) {
   const time = now / 1000;
   level.platforms.forEach(platform => {
@@ -301,9 +313,7 @@ function physics(dt, now) {
   player.grounded = false;
 
   for (const platform of level.platforms) {
-    const horizontal = player.x + player.w - 5 > platform.x && player.x + 5 < platform.x + platform.w;
-    const landing = previousBottom <= platform.y + 5 && player.y + player.h >= platform.y && player.vy >= 0;
-    if (horizontal && landing) {
+    if (crossesPlatformTop(player, previousBottom, platform)) {
       player.y = platform.y - player.h;
       player.vy = 0;
       player.grounded = true;
@@ -460,8 +470,11 @@ function drawPlayer(cam) {
   const x = player.x - cam;
   const squashX = player.squash * 3;
   ctx.save();
-  ctx.translate(x + player.w / 2, player.y + player.h / 2);
-  ctx.scale(1 + squashX / 20, 1 - squashX / 30);
+  // Squash upward from the feet so the visible bottom always meets the
+  // same collision line used by platform landings.
+  ctx.translate(x + player.w / 2, player.y + player.h);
+  ctx.scale(1, 1 - squashX / 30);
+  ctx.translate(0, -player.h / 2);
   ctx.fillStyle = '#eafff1';
   roundedRect(ctx, -player.w / 2, -player.h / 2, player.w, player.h, 7);
   ctx.fill();

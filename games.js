@@ -53,7 +53,7 @@ function gdBeginnerLegacy(){const cfg=gdConfigs[gdLevel]||gdConfigs.stereo;let p
 function gdBeginner(){
   if(gdLevel!=='stereo')return gdBeginnerOriginal();
   const finish=gdConfigs.stereo.finish*25;
-  let p={x:130,y:368,vy:0,w:32,h:32,onGround:true,rot:0},distance=0,last=performance.now(),old=false;
+  let p={x:130,y:370,vy:0,w:32,h:32,onGround:true,rot:0},distance=0,last=performance.now(),old=false;
   const chart=[];for(let i=0;i<44;i++){const x=620+i*255;const h=i%9===5?42:i%5===2?34:28;chart.push({x,y:402,w:h>38?30:24,h});if(i%7===3)chart.push({x:x+34,y:402,w:24,h:28})}
   const coins=[760,1510,2290,3820,5360,6890,8440,9980].map(x=>({x,y:300,collected:false}));
   const pads=[{x:1280,w:46},{x:2360,w:46},{x:4620,w:46},{x:7440,w:46},{x:9720,w:46}];
@@ -70,19 +70,19 @@ function gdBeginner(){
   }
   function loop(now){
     if(!running)return;const dt=Math.min(.035,(now-last)/1000);last=now;const j=keys.Space||keys.ArrowUp||keys.KeyW;if(j&&!old)jump();old=j;
-    distance+=255*dt;p.vy+=1550*dt;p.y+=p.vy*dt;p.onGround=false;if(p.y>=368){p.y=368;p.vy=0;p.onGround=true}p.rot+=dt*6;
-    pads.forEach(o=>{const x=o.x-distance+p.x;if(p.x+p.w>x&&p.x<x+o.w&&p.y+p.h>=402&&p.y+p.h<430&&p.vy>=0){p.y=334;p.vy=-860;p.onGround=false}});
+    distance+=255*dt;p.vy+=1550*dt;const previousBottom=p.y+p.h;p.y+=p.vy*dt;p.onGround=false;if(p.y>=370){p.y=370;p.vy=0;p.onGround=true}p.rot+=dt*6;
+    pads.forEach(o=>{const x=o.x-distance+p.x;const padTop=392;const overlapsPad=p.x+p.w>x&&p.x<x+o.w;const crossedPadTop=previousBottom<=padTop&&p.y+p.h>=padTop;if(overlapsPad&&crossedPadTop&&p.vy>0){p.y=padTop-p.h;p.vy=-860;p.onGround=false}});
     coins.forEach(c=>{const x=c.x-distance+p.x;if(!c.collected&&Math.abs((p.x+p.w/2)-x)<22&&Math.abs((p.y+p.h/2)-c.y)<28){c.collected=true;window.RecessPoints?.award?.(25,'Geometry coin')}});
-    for(const o of chart){const x=o.x-distance+p.x;if(p.x+p.w-4>x&&p.x+4<x+o.w&&p.y+p.h>o.y-o.h+4&&p.y<o.y){if(practiceMode){distance=Math.floor(distance/300)*300;p.y=368;p.vy=0;showPracticeCheckpoint();}else{end(`STEREO MADNESS ended at ${Math.floor(distance/finish*100)}%.`);return}}}
-    if(p.y>500){if(practiceMode){distance=Math.floor(distance/300)*300;p.y=368;p.vy=0;showPracticeCheckpoint()}else{end(`STEREO MADNESS ended at ${Math.floor(distance/finish*100)}%.`);return}}
+    for(const o of chart){const x=o.x-distance+p.x;if(p.x+p.w-4>x&&p.x+4<x+o.w&&p.y+p.h>o.y-o.h+4&&p.y<o.y){if(practiceMode){distance=Math.floor(distance/300)*300;p.y=370;p.vy=0;showPracticeCheckpoint();}else{end(`STEREO MADNESS ended at ${Math.floor(distance/finish*100)}%.`);return}}}
+    if(p.y>500){if(practiceMode){distance=Math.floor(distance/300)*300;p.y=370;p.vy=0;showPracticeCheckpoint()}else{end(`STEREO MADNESS ended at ${Math.floor(distance/finish*100)}%.`);return}}
     setScore(Math.floor(distance/25));if(distance>=finish){end('STEREO MADNESS complete! 100%');return}draw();raf=requestAnimationFrame(loop)
   }raf=requestAnimationFrame(loop)
 }
 function gdBeginnerOriginal(){
   const cfg=gdConfigs[gdLevel]||gdConfigs.backtrack;
-  let p={x:130,y:368,vy:0,w:32,h:32,onGround:true,rot:0},plats=[{x:0,y:402,w:900,h:5,ground:true},{x:390,y:335,w:220,h:12},{x:740,y:285,w:190,h:12}],spikes=[],speed=cfg.speed,next=0,last=performance.now(),old=false;
+  let p={x:130,y:370,vy:0,w:32,h:32,onGround:true,rot:0},plats=[{x:0,y:402,w:900,h:5,ground:true},{x:390,y:335,w:220,h:12},{x:740,y:285,w:190,h:12}],spikes=[],speed=cfg.speed,next=0,last=performance.now(),old=false;
   const finish=cfg.finish,jump=()=>{if(p.onGround){p.vy=-640;p.onGround=false}};
-  function resetCheckpoint(){p.y=368;p.vy=0;spikes=[];score=Math.floor(score/30)*30;setScore(score);showPracticeCheckpoint()}
+  function resetCheckpoint(){p.y=370;p.vy=0;spikes=[];score=Math.floor(score/30)*30;setScore(score);showPracticeCheckpoint()}
   function draw(){
     ctx.fillStyle='#21165b';ctx.fillRect(0,0,800,500);ctx.strokeStyle='rgba(117,255,240,.15)';
     for(let x=0;x<800;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,500);ctx.stroke()}for(let y=0;y<500;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(800,y);ctx.stroke()}
@@ -94,13 +94,18 @@ function gdBeginnerOriginal(){
   function loop(now){
     if(!running)return;const dt=Math.min(.035,(now-last)/1000);last=now;const j=keys.Space||keys.ArrowUp||keys.KeyW;if(j&&!old)jump();old=j;
     p.vy+=1550*dt;const prev=p.y+p.h;p.y+=p.vy*dt;p.onGround=false;
-    plats.forEach(o=>{if(!o.ground){o.x-=speed*dt;if(o.x+o.w<0)o.x=850+Math.random()*100}if((!o.ground||score<=18)&&prev<=o.y&&p.y+p.h>=o.y&&p.x+p.w>o.x&&p.x<o.x+o.w&&p.vy>=0){p.y=o.y-p.h;p.vy=0;p.onGround=true}});
+    plats.forEach(o=>{if(!o.ground){o.x-=speed*dt;if(o.x+o.w<0)o.x=850+Math.random()*100}if((!o.ground||score<=18)&&crossesGdPlatformTop(p,prev,o)){p.y=o.y-p.h;p.vy=0;p.onGround=true}});
     p.rot+=dt*6;if(p.y>500){if(practiceMode)resetCheckpoint();else{end(`${cfg.label} ended at ${Math.floor(score/finish*100)}%.`);return}}
     next-=dt;if(next<=0){const platform=score>18?plats[1+Math.floor(Math.random()*2)]:plats[0];spikes.push({x:platform.x+platform.w*.62,y:platform.y,w:22,h:28+Math.random()*16});next=cfg.next}
     spikes.forEach(o=>o.x-=speed*dt);spikes=spikes.filter(o=>o.x>-80);
     for(const o of spikes)if(p.x+p.w-4>o.x&&p.x+4<o.x+o.w&&p.y+p.h>o.y-o.h+3&&p.y<o.y){if(practiceMode)resetCheckpoint();else{end(`${cfg.label} ended at ${Math.floor(score/finish*100)}%.`);return}}
     setScore(score+dt*10);if(score>=finish){end(`${cfg.label} complete! 100%`);return}draw();raf=requestAnimationFrame(loop)
   }raf=requestAnimationFrame(loop)
+}
+function crossesGdPlatformTop(player, previousBottom, platform){
+  // GD platforms are drawn as square-edged rectangles, so use their exact
+  // visible top and the cube's full, axis-aligned hitbox—no extra padding.
+  return player.vy>=0&&previousBottom<=platform.y&&player.y+player.h>=platform.y&&player.x+player.w>platform.x&&player.x<platform.x+platform.w;
 }
 function showPracticeCheckpoint(){const node=document.querySelector('#overlay-copy');if(node)node.textContent='Practice checkpoint reached — keep going!';}
 

@@ -1,5 +1,5 @@
 (() => {
-  if (window.__recessLeaderboardLoaded) return;
+  if (window.__recessLeaderboardLoaded || document.querySelector('.leaderboard-launch')) return;
   window.__recessLeaderboardLoaded = true;
   const params = new URLSearchParams(location.search);
   let game = null;

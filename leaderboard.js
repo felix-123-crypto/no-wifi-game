@@ -1,4 +1,6 @@
 (() => {
+  if (window.__recessLeaderboardLoaded) return;
+  window.__recessLeaderboardLoaded = true;
   const params = new URLSearchParams(location.search);
   let game = null;
   if (location.pathname.includes('classics')) game = params.get('game') || '2048';

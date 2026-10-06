@@ -62,6 +62,7 @@
   function setScore(value) {
     commonScore = Math.max(0, Math.floor(value));
     scoreEl.textContent = commonScore.toLocaleString();
+    window.RecessLeaderboard?.queueScore?.(commonScore);
     if (commonScore > commonBest) {
       commonBest = commonScore;
       bestEl.textContent = commonBest.toLocaleString();

@@ -837,7 +837,7 @@
       }
       copy ||= `${game.homeScore}–${game.awayScore}. You earned ${nf.format(coinReward)} coins${rpChange?` and ${rpChange>0?'+':''}${rpChange} RP`:''}.`;
     }
-    awardArcadePoints(arcadePoints,arcadeReason);
+    awardArcadePoints(arcadePoints,arcadeReason);window.RecessLeaderboard?.submit?.(game.mode==='skill' ? game.skillScore : Math.max(0, game.homeScore*100 + (game.homeScore-game.awayScore)*50));
     saveState();renderWallet();$('#match-overlay-icon').textContent=icon;$('#match-overlay-title').textContent=title;$('#match-overlay-copy').textContent=copy;$('#result-stats').innerHTML=`<span>${game.mode==='skill'?nf.format(game.skillScore)+' PTS':game.homeScore+' - '+game.awayScore}</span><span>+${nf.format(coinReward)} ●</span>${rpChange?`<span>${rpChange>0?'+':''}${rpChange} RP</span>`:''}`;$('#match-begin').textContent='PLAY AGAIN';$('#match-begin').dataset.result='true';$('#match-overlay').hidden=false;tone(title.includes('VICTORY')||title.includes('WON')?760:260,.25,'triangle');
   }
   function gameLoop(timestamp){

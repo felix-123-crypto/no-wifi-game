@@ -1,3 +1,4 @@
+const leaderboardScript=document.createElement('script');leaderboardScript.src='leaderboard.js';document.head.appendChild(leaderboardScript);
 const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best');
 const overlay=document.querySelector('#overlay'),startBtn=document.querySelector('#start'),titleEl=document.querySelector('#game-title'),subEl=document.querySelector('#game-subtitle'),kickEl=document.querySelector('#game-kicker'),howEl=document.querySelector('#how');
 const game=new URLSearchParams(location.search).get('game')||'pacman';let running=false,score=0,raf,keys={};let activeBlockWorld=null;
@@ -21,8 +22,8 @@ if(touchPad){
   touchButtons.forEach(button=>{button.addEventListener('pointercancel',()=>{keys[button.dataset.key]=false;});});
 }
 let best=Number(localStorage.getItem(`recess-${game}`)||0);bestEl.textContent=String(best).padStart(3,'0');
-function setScore(n){score=n;scoreEl.textContent=String(n).padStart(3,'0');if(n>best){best=n;bestEl.textContent=String(best).padStart(3,'0');localStorage.setItem(`recess-${game}`,best)}}
-function end(msg){running=false;cancelAnimationFrame(raf);document.querySelector('#overlay-title').textContent='ROUND OVER';document.querySelector('#overlay-copy').textContent=msg;startBtn.textContent='PLAY AGAIN';overlay.hidden=false}
+function setScore(n){score=n;scoreEl.textContent=String(n).padStart(3,'0');window.RecessLeaderboard?.queueScore?.(n);if(n>best){best=n;bestEl.textContent=String(best).padStart(3,'0');localStorage.setItem(`recess-${game}`,best)}}
+function end(msg){running=false;cancelAnimationFrame(raf);window.RecessLeaderboard?.submit?.(score);document.querySelector('#overlay-title').textContent='ROUND OVER';document.querySelector('#overlay-copy').textContent=msg;startBtn.textContent='PLAY AGAIN';overlay.hidden=false}
 addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
 addEventListener('keydown',e=>{if(game==='dino'&&e.code==='KeyH'){const control=document.querySelector('#dino-hitboxes');if(control){control.checked=!control.checked;control.dispatchEvent(new Event('change'));}}});
 document.querySelectorAll('#touch button').forEach(b=>{const code=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true});b.addEventListener('pointerup',()=>keys[code]=false)});

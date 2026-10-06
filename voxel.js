@@ -1471,6 +1471,7 @@
   }
 
   function updateScore() {
+    window.RecessLeaderboard?.queueScore?.(stats.score);
     if (stats.score > bestScore) {
       bestScore = stats.score;
       saveBestScore(bestScore);

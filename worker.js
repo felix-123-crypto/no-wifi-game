@@ -38,7 +38,7 @@ async function leaderboard(request, env, url) {
       score=CASE WHEN excluded.score > leaderboard.score THEN excluded.score ELSE leaderboard.score END,
       updated_at=CASE WHEN excluded.score > leaderboard.score THEN CURRENT_TIMESTAMP ELSE leaderboard.updated_at END`).bind(game, playerId, nickname, score).run();
     return json({ok:true});
-  } catch (error) { console.error('leaderboard', error); return json({error:'Leaderboard database query failed.', detail:String(error?.message || error).slice(0,160)},503); }
+  } catch (error) { console.error('leaderboard', error); return json({error:'Leaderboard temporarily unavailable.'},503); }
 }
 
 export default { async fetch(request, env) {
